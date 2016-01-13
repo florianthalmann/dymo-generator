@@ -1,0 +1,29 @@
+{
+  "name": "dymo-generator",
+  "homepage": "https://github.com/florianthalmann/dymo-generator",
+  "description": "A package that creates dymos from feature files",
+  "main": "dymo-generator.js",
+  "keywords": [
+    "dymo",
+    "web",
+    "audio",
+    "api",
+    "semantic",
+    "music"
+  ],
+  "moduleType": [],
+  "authors": [
+    "florian thalmann"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "dymo-core": "*"
+  }
+}
