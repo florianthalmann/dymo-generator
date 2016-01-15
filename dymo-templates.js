@@ -1,5 +1,15 @@
 function DymoTemplates() { }
 
+//expects featurePaths to contain a bar and beat tracker file, followed by any other features
+DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, $scope, $http) {
+	var loader = new FeatureLoader($scope, $http);
+	loader.loadFeature(featureUris[0], '1', generator); //load bars
+	loader.loadFeature(featureUris[0], '', generator); //load beats
+	for (var i = 1; i < featureUris.length; i++) {
+		loader.loadFeature(featureUris[i], '', generator); //load other features
+	}
+}
+
 /*DymoTemplates.createPitchHelixDmo = function() {
 	chromaFeature = getFeature("chroma");
 	heightFeature = getFeature("height");

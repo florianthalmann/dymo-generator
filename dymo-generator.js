@@ -1,30 +1,45 @@
-function DymoGenerator(scheduler, $scope) {
+function DymoGenerator(scheduler, onFeatureAdded) {
 	
 	var self = this;
 	
 	this.dymo;
 	var currentTopDymo; //the top dymo for the current audio file
-	var audioFileChanged = false;
-	this.dymoGraph = {"nodes":[], "links":[]};
-	this.similarityGraph = {"nodes":[], "links":[]};
-	idToDymo = {};
-	idToJson = {};
+	var audioFileChanged;
+	this.dymoGraph;
+	this.similarityGraph;
+	var idToDymo;
+	var idToJson;
+	this.features;
+	var maxDepth;
+	var condensationMode = MEAN;
+	var currentSourcePath;
 	
-	this.features = [createFeature("level"), createFeature("random", 0, 1)];
+	this.resetDymo = function() {
+		this.dymo = undefined;
+		currentTopDymo = undefined; //the top dymo for the current audio file
+		audioFileChanged = false;
+		this.dymoGraph = {"nodes":[], "links":[]};
+		this.similarityGraph = {"nodes":[], "links":[]};
+		idToDymo = {};
+		idToJson = {};
+		this.features = [createFeature("level"), createFeature("random", 0, 1)];
+		maxDepth = 0;
+	}
 	
-	var maxDepth = 0;
+	this.setCondensationMode = function(mode) {
+		condensationMode = mode;
+	}
 	
-	
-	this.init = function() {
-		
+	this.setCurrentSourcePath = function(path) {
+		currentSourcePath = path;
 	}
 	
 	this.getScheduler = function() {
 		return scheduler;
 	}
 	
-	this.getRealDmo = function(dmo) {
-		return idToDymo[dmo["@id"]];
+	this.getRealDymo = function(dymo) {
+		return idToDymo[dymo["@id"]];
 	}
 	
 	this.setAudioFileChanged = function() {
@@ -99,42 +114,48 @@ function DymoGenerator(scheduler, $scope) {
 			var currentValues = data.filter(
 				function(x){return currentTime <= x.time.value && x.time.value < currentTime+currentDuration}
 			);
-			var value = 0;
-			if ($scope.selectedFeatureMode.name == "first") {
-				value = currentValues[0].value[0];
-			} else if ($scope.selectedFeatureMode.name == "mean") {
-				value = currentValues.reduce(function(sum, i) { return sum + i.value[0]; }, 0) / currentValues.length;
-			} else if ($scope.selectedFeatureMode.name == "median") {
-				currentValues.sort(function(a, b) { return a.value[0] - b.value[0]; });
-				var middleIndex = Math.floor(currentValues.length/2);
-				value = currentValues[middleIndex].value[0];
-				if (currentValues.length % 2 == 0) {
-					value += currentValues[middleIndex-1].value[0];
-				}
-			}
-			setDymoFeature(this.getRealDmo(this.dymoGraph.nodes[i]), feature, value);
+			var value = getCondensedValues(currentValues);
+			this.setDymoFeature(this.getRealDymo(this.dymoGraph.nodes[i]), feature, value);
 		}
 		updateGraphAndMap();
 	}
 	
-	this.addSegmentation = function(segments, fileName) {
+	//condenses the given values into one value based on condensationMode
+	function getCondensedValues(values) {
+		var value = 0;
+		if (condensationMode == FIRST) {
+			value = values[0].value[0];
+		} else if (condensationMode == MEAN) {
+			value = values.reduce(function(sum, i) { return sum + i.value[0]; }, 0) / values.length;
+		} else if (condensationMode == MEDIAN) {
+			values.sort(function(a, b) { return a.value[0] - b.value[0]; });
+			var middleIndex = Math.floor(values.length/2);
+			value = values[middleIndex].value[0];
+			if (values.length % 2 == 0) {
+				value += values[middleIndex-1].value[0];
+			}
+		}
+		return value;
+	}
+	
+	this.addSegmentation = function(segments) {
 		if (getDymoCount() == 0) {
-			currentTopDymo = addDymo(undefined, $scope.getFullSourcePath());
+			currentTopDymo = this.addDymo(undefined, currentSourcePath);
 		} else if (audioFileChanged) {
-			currentTopDymo = addDymo(self.dymo, $scope.getFullSourcePath());
+			currentTopDymo = this.addDymo(self.dymo, currentSourcePath);
 			maxDepth = currentTopDymo.getLevel();
 			audioFileChanged = false;
 		}
 		for (var i = 0; i < segments.length-1; i++) {
 			parent = getSuitableParent(segments[i].time.value);
-			var newDmo = addDymo(parent);
+			var newDymo = this.addDymo(parent);
 			var startTime = segments[i].time.value;
-			setDymoFeature(newDmo, "time", startTime);
-			setDymoFeature(newDmo, "duration", segments[i+1].time.value - startTime);
+			this.setDymoFeature(newDymo, "time", startTime);
+			this.setDymoFeature(newDymo, "duration", segments[i+1].time.value - startTime);
 			if (segments[i].label) {
-				setDymoFeature(newDmo, "segmentLabel", segments[i].label.value);
+				this.setDymoFeature(newDymo, "segmentLabel", segments[i].label.value);
 			}
-			updateParentDuration(parent, newDmo);
+			updateParentDuration(parent, newDymo);
 		}
 		updateGraphAndMap();
 		maxDepth++;
@@ -167,12 +188,12 @@ function DymoGenerator(scheduler, $scope) {
 		var parentTime = parent.getFeature("time");
 		var newDymoTime = newDymo.getFeature("time");
 		if (!parentTime || newDymoTime < parentTime) {
-			setDymoFeature(parent, "time", newDymoTime);
+			self.setDymoFeature(parent, "time", newDymoTime);
 		}
 		var parentDuration = parent.getFeature("duration");
 		var newDymoDuration = newDymo.getFeature("duration");
 		if (!parentDuration || parentTime+parentDuration < newDymoTime+newDymoDuration) {
-			setDymoFeature(parent, "duration", newDymoTime+newDymoDuration - parentTime);
+			self.setDymoFeature(parent, "duration", newDymoTime+newDymoDuration - parentTime);
 		}
 	}
 	
@@ -195,20 +216,8 @@ function DymoGenerator(scheduler, $scope) {
 		//if doesn't exist make a new one
 		var newFeature = createFeature(name);
 		self.features.splice(self.features.length-2, 0, newFeature);
-		adjustViewConfig(newFeature);
+		onFeatureAdded(newFeature);
 		return newFeature;
-	}
-	
-	function adjustViewConfig(newFeature) {
-		if (self.features.length-2 == 1) {
-			$scope.viewConfig.xAxis.param = newFeature;
-		} else if (self.features.length-2 == 2) {
-			$scope.viewConfig.yAxis.param = newFeature;
-		} else if (self.features.length-2 == 3) {
-			$scope.viewConfig.size.param = newFeature;
-		} else if (self.features.length-2 == 4) {
-			$scope.viewConfig.color.param = newFeature;
-		}
 	}
 	
 	//TODO REMOVE FROM HERE!!!
@@ -218,5 +227,8 @@ function DymoGenerator(scheduler, $scope) {
 		}
 		return {name:name, min:1000, max:0};
 	}
+	
+	//INIT!!
+	this.resetDymo();
 
 }
