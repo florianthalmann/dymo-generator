@@ -2,68 +2,145 @@ function FeatureLoader($scope, $http) {
 	
 	var mobileRdfUri = "rdf/mobile.n3";
 	var multitrackRdfUri = "http://purl.org/ontology/studio/multitrack";
-	var rdfsUri = "http://www.w3.org/2000/01/rdf-schema";
+	var rdfsUri = "http://www.w3.org/2000/01/rdf-schema#";
 	
-	var eventOntology = "http://purl.org/NET/c4dm/event.owl";
-	var timelineOntology = "http://purl.org/NET/c4dm/timeline.owl";
+	var eventOntology = "http://purl.org/NET/c4dm/event.owl#";
+	var timelineOntology = "http://purl.org/NET/c4dm/timeline.owl#";
+	var featureOntology = "http://purl.org/ontology/af/";
+	var vampOntology = "http://purl.org/ontology/vamp/";
+	var dublincoreOntology = "http://purl.org/dc/elements/1.1/";
 	
 	var features = {}
 	
-	this.loadFeature = function(uri, labelCondition, generator) {
-		var fileExtension = uri.slice(uri.indexOf('.')+1);
+	this.loadFeature = function(uri, labelCondition, generator, callback) {
+		var fileExtension = uri.split('.');
+		fileExtension = fileExtension[fileExtension.length-1];
 		if (fileExtension == 'n3') {
-			loadFeatureFromRdf(uri, labelCondition, generator);
+			loadFeatureFromRdf(uri, labelCondition, generator, callback);
 		} else if (fileExtension == 'json') {
-			loadFeatureFromJson(uri, labelCondition, generator);
+			loadFeatureFromJson(uri, labelCondition, generator, callback);
 		}
 	}
 		
-	function loadFeatureFromRdf(rdfUri, labelCondition, generator) {
-		if (features[rdfUri]) {
-			setFeatureFromRdf(rdfUri, labelCondition, generator)
-		} else {
-			$scope.featureLoadingThreads++;
+	function loadFeatureFromRdf(rdfUri, labelCondition, generator, callback) {
+		/*if (features[rdfUri]) {
+			setFeatureFromRdf(rdfUri, labelCondition, generator);
+		} else {*/
 			$http.get(rdfUri).success(function(data) {
 				rdfstore.create(function(err, store) {
 					store.load('text/turtle', data, function(err, results) {
 						if (err) {
 							console.log(err);
+							callback();
+						} else {
+							loadSegmentationFeatureFromRdf(store, function(results) {
+								if (results.length > 0) {
+									addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
+									callback();
+								} else {
+									loadSegmentinoFeatureFromRdf(store, function(results) {
+										if (results.length > 0) {
+											addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
+											callback();
+										} else {
+											loadSignalFeatureFromRdf(store, function(results) {
+												generator.addFeature(results[0].name.value, convertRdfSignalToJson(results[0]));
+												callback();
+											});
+										}
+									});
+								}
+							});
 						}
-						//for now looks at anything containing event times
-						//?eventType <"+rdfsUri+"#subClassOf>* <"+eventOntology+"#Event> . \
-						store.execute("SELECT ?xsdTime ?label \
-						WHERE { ?event a ?eventType . \
-						?event <"+eventOntology+"#time> ?time . \
-						?time <"+timelineOntology+"#at> ?xsdTime . \
-						OPTIONAL { ?event <"+rdfsUri+"#label> ?label . } }", function(err, results) {
-							//console.log("execute");
-							var times = [];
-							for (var i = 0; i < results.length; i++) {
-								//insert value/label pairs
-								times.push({
-									time: {value: toSecondsNumber(results[i].xsdTime.value)},
-									label: {value: getValue(results[i].label)}
-								});
-							}
-							//save so that file does not have to be read twice
-							features[rdfUri] = times.sort(function(a,b){return a.time - b.time});
-							setFeatureFromRdf(rdfUri, labelCondition, generator);
-							$scope.featureLoadingThreads--;
-							$scope.$apply();
-						});
+						
 					});
 				});
 			});
-		}
+			//}
 	}
 	
-	function setFeatureFromRdf(rdfUri, labelCondition, generator) {
-		subset = features[rdfUri];
-		if (labelCondition) {
-			subset = features[rdfUri].filter(function(x) { return x.label == labelCondition; });
+	function addSegmentationFromRdf(rdfUri, labelCondition, generator, results) {
+		var times = convertRdfEventsToJson(results);
+		//save so that file does not have to be read twice
+		features[rdfUri] = times.sort(function(a,b){return a.time.value - b.time.value});
+		var subset = features[rdfUri];
+		if (labelCondition && features[rdfUri][0].label) {
+			subset = subset.filter(function(x) { return x.label.value == labelCondition; });
 		}
-		subset = subset.map(function(x) { return x.time; });
-		generator.setSegmentation(subset);
+		console.log(subset.length, subset);
+		generator.addSegmentation(subset);
+	}
+	
+	function loadSegmentationFeatureFromRdf(store, callback) {
+		//for now looks at anything containing event times
+		//?eventType <"+rdfsUri+"#subClassOf>* <"+eventOntology+"#Event> . \
+		store.execute("SELECT ?xsdTime ?label \
+			WHERE { ?event a ?eventType . \
+			?event <"+eventOntology+"time> ?time . \
+			?time <"+timelineOntology+"at> ?xsdTime . \
+			OPTIONAL { ?event <"+rdfsUri+"label> ?label . } }", function(err, results) {
+				callback(results);
+			}
+		);
+	}
+	
+	function loadSegmentinoFeatureFromRdf(store, callback) {
+		//for now looks at anything containing event times
+		//?eventType <"+rdfsUri+"#subClassOf>* <"+eventOntology+"#Event> . \
+		store.execute("SELECT ?xsdTime ?label \
+			WHERE { ?event a ?eventType . \
+			?event <"+eventOntology+"time> ?time . \
+			?time <"+timelineOntology+"beginsAt> ?xsdTime . \
+			OPTIONAL { ?event <"+rdfsUri+"label> ?label . } }", function(err, results) {
+				callback(results);
+			}
+		);
+	}
+	
+	function loadSignalFeatureFromRdf(store, callback) {
+		store.execute("SELECT ?values ?name ?stepSize ?sampleRate \
+			WHERE { ?signal a ?signalType . \
+			?signal <"+featureOntology+"value> ?values . \
+			?signalType <"+dublincoreOntology+"title> ?name . \
+			?signal <"+vampOntology+"computed_by> ?transform . \
+			?transform <"+vampOntology+"step_size> ?stepSize . \
+			?transform <"+vampOntology+"sample_rate> ?sampleRate . }", function(err, results) {
+				callback(results);
+			}
+		);
+	}
+	
+	function convertRdfEventsToJson(results) {
+		var times = [];
+		for (var i = 0; i < results.length; i++) {
+			//insert value/label pairs
+			times.push({
+				time: {value: toSecondsNumber(results[i].xsdTime.value)},
+				label: {value: getValue(results[i].label)}
+			});
+		}
+		return times;
+	}
+	
+	function convertRdfSignalToJson(results) {
+		var signal = results.values.value.split(" ").map(function(v) { return parseFloat(v); });
+		var stepSize = parseInt(results.stepSize.value);
+		var sampleRate = parseInt(results.sampleRate.value);
+		var values = [];
+		for (var i = 0; i < signal.length; i++) {
+			//insert value/label pairs
+			values.push({
+				time: {value: i*stepSize/sampleRate},
+				value: [signal[i]]
+			});
+		}
+		return values;
+	}
+	
+	function getValue(result) {
+		if (result) {
+			return result.value;
+		}
 	}
 	
 	function loadFeatureFromJson(jsonUri, labelCondition, generator) {

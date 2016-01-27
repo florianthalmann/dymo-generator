@@ -29,6 +29,41 @@ DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, $
 	}
 }*/
 
+DymoTemplates.createGratefulDeadDymo = function(generator, $scope, $http) {
+	var dir = 'features/gd81-05-02.dmow.28304.sbeok.flacf/';
+	var uris = [];
+	uris[0] = dir+'gd1981-05-02d1t05_vamp_segmentino_segmentino_segmentation.n3';
+	uris[1] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
+	uris[2] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
+	uris[3] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_crest_crest.n3';
+	uris[4] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_loudness_loudness.n3';
+	uris[5] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_centroid_spectral_centroid.n3';
+	uris[6] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_standard_deviation_spectral_standard_deviation.n3';
+	uris[7] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_standard_deviation_standard_deviation.n3';
+	var conditions = ['', '1', '', '', '', '', '', ''];
+	var loader = new FeatureLoader($scope, $http);
+	DymoTemplates.loadMultipleFeatures(generator, loader, uris, conditions, 0, $scope);
+	
+	/*$http.get('getallfiles/', {params:{directory:'/Volumes/FastSSD/gd_test/Bird_Song/gd81-05-02.dmow.28304.sbeok.flacf/'}}).success(function(fileList) {
+		//keep only folders
+		fileList = fileList.filter(function(f) {
+			return f.indexOf('.') < 0;
+		});
+		console.log(fileList);
+	});*/
+}
+
+DymoTemplates.loadMultipleFeatures = function(generator, loader, uris, conditions, i, $scope) {
+	if (i < uris.length) {
+		console.log("load");
+		loader.loadFeature(uris[i], conditions[i], generator, function() {
+			console.log("done");
+			$scope.$apply();
+			DymoTemplates.loadMultipleFeatures(generator, loader, uris, conditions, i+1, $scope);
+		});
+	}
+}
+
 DymoTemplates.createSebastianDymo = function() {
 	var dirPath = 'audio/Chopin_Op028-04_003_20100611-SMD/';
 	var onsetFeature = getFeature("onset");

@@ -26,6 +26,23 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		maxDepth = 0;
 	}
 	
+	this.setDymo = function(dymo, dymoMap) {
+		this.resetDymo();
+		recursiveAddDymo(undefined, dymo);
+	}
+	
+	function recursiveAddDymo(parent, dymo) {
+		var newDymo = self.addDymo(parent);
+		var features = dymo.getFeatures();
+		for (var name in features) {
+			self.setDymoFeature(newDymo, getFeature(name), features[name]);
+		}
+		var parts = dymo.getParts();
+		for (var i = 0; i < parts.length; i++) {
+			recursiveAddDymo(newDymo, parts[i]);
+		}
+	}
+	
 	this.setCondensationMode = function(mode) {
 		condensationMode = mode;
 	}
@@ -152,7 +169,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 			var startTime = segments[i].time.value;
 			this.setDymoFeature(newDymo, "time", startTime);
 			this.setDymoFeature(newDymo, "duration", segments[i+1].time.value - startTime);
-			if (segments[i].label) {
+			if (segments[i].label && !isNaN(segments[i].label)) {
 				this.setDymoFeature(newDymo, "segmentLabel", segments[i].label.value);
 			}
 			updateParentDuration(parent, newDymo);
@@ -170,13 +187,14 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 				for (var i = 0; i < parts.length; i++) {
 					if (parts[i].getFeature("time") <= time) {
 						nextCandidate = parts[i];
-						depth++;
+						//depth++;
 					} else if (i == 0) {
-						return nextCandidate;
+						nextCandidate = parts[i];
 					} else {
 						break;
 					}
 				}
+				depth++;
 			} else {
 				return nextCandidate;
 			}
