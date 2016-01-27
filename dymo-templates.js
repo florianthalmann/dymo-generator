@@ -1,13 +1,14 @@
 function DymoTemplates() { }
 
 //expects featurePaths to contain a bar and beat tracker file, followed by any other features
-DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, $scope, $http) {
-	var loader = new FeatureLoader($scope, $http);
-	loader.loadFeature(featureUris[0], '1', generator); //load bars
-	loader.loadFeature(featureUris[0], '', generator); //load beats
+DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, onLoad) {
+	var uris = [featureUris[0], featureUris[0]];
+	var conditions = ['', '1'];
 	for (var i = 1; i < featureUris.length; i++) {
-		loader.loadFeature(featureUris[i], '', generator); //load other features
+		uris[i+1] = featureUris[i];
+		conditions[i+1] = '';
 	}
+	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, onLoad);
 }
 
 /*DymoTemplates.createPitchHelixDmo = function() {
@@ -41,8 +42,9 @@ DymoTemplates.createGratefulDeadDymo = function(generator, $scope, $http) {
 	uris[6] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_standard_deviation_spectral_standard_deviation.n3';
 	uris[7] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_standard_deviation_standard_deviation.n3';
 	var conditions = ['', '1', '', '', '', '', '', ''];
-	var loader = new FeatureLoader($scope, $http);
-	DymoTemplates.loadMultipleFeatures(generator, loader, uris, conditions, 0, $scope);
+	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
+		$scope.$apply();
+	});
 	
 	/*$http.get('getallfiles/', {params:{directory:'/Volumes/FastSSD/gd_test/Bird_Song/gd81-05-02.dmow.28304.sbeok.flacf/'}}).success(function(fileList) {
 		//keep only folders
@@ -53,14 +55,14 @@ DymoTemplates.createGratefulDeadDymo = function(generator, $scope, $http) {
 	});*/
 }
 
-DymoTemplates.loadMultipleFeatures = function(generator, loader, uris, conditions, i, $scope) {
+DymoTemplates.loadMultipleFeatures = function(generator, uris, conditions, i, onLoad) {
+	var loader = new FeatureLoader();
 	if (i < uris.length) {
-		console.log("load");
 		loader.loadFeature(uris[i], conditions[i], generator, function() {
-			console.log("done");
-			$scope.$apply();
-			DymoTemplates.loadMultipleFeatures(generator, loader, uris, conditions, i+1, $scope);
+			DymoTemplates.loadMultipleFeatures(generator, uris, conditions, i+1, onLoad);
 		});
+	} else if (onLoad) {
+		onLoad();
 	}
 }
 

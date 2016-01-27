@@ -1,4 +1,4 @@
-function FeatureLoader($scope, $http) {
+function FeatureLoader() {
 	
 	var mobileRdfUri = "rdf/mobile.n3";
 	var multitrackRdfUri = "http://purl.org/ontology/studio/multitrack";
@@ -26,7 +26,8 @@ function FeatureLoader($scope, $http) {
 		/*if (features[rdfUri]) {
 			setFeatureFromRdf(rdfUri, labelCondition, generator);
 		} else {*/
-			$http.get(rdfUri).success(function(data) {
+			
+			httpGet(rdfUri, function(data) {
 				rdfstore.create(function(err, store) {
 					store.load('text/turtle', data, function(err, results) {
 						if (err) {
@@ -67,7 +68,6 @@ function FeatureLoader($scope, $http) {
 		if (labelCondition && features[rdfUri][0].label) {
 			subset = subset.filter(function(x) { return x.label.value == labelCondition; });
 		}
-		console.log(subset.length, subset);
 		generator.addSegmentation(subset);
 	}
 	
@@ -143,9 +143,9 @@ function FeatureLoader($scope, $http) {
 		}
 	}
 	
-	function loadFeatureFromJson(jsonUri, labelCondition, generator) {
-		$scope.featureLoadingThreads++;
-		$http.get(jsonUri).success(function(json) {
+	function loadFeatureFromJson(jsonUri, labelCondition, generator, callback) {
+		httpGet(jsonUri, function(json) {
+			json = JSON.parse(json);
 			var results = json[Object.keys(json)[1]][0];
 			var outputId = results.annotation_metadata.annotator.output_id;
 			if (outputId == "beats" || outputId == "onsets") {
@@ -154,21 +154,32 @@ function FeatureLoader($scope, $http) {
 					results = results.filter(function(x) { return x.label.value == labelCondition; });
 				}
 				generator.addSegmentation(results);
+				callback();
 			} else {
-				generator.addFeature(outputId, results.data)
+				generator.addFeature(outputId, results.data);
+				callback();
 			}
-			$scope.featureLoadingThreads--;
-			//$scope.$apply();
 		});
 	}
 	
 	function loadGraph(dmo, parameterUri, jsonUri) {
-		$scope.featureLoadingThreads++;
-		$http.get(jsonUri).success(function(json) {
+		httpGet(jsonUri, function(json) {
 			dmo.setGraph(json);
-			$scope.featureLoadingThreads--;
-			$scope.$apply();
 		});
+	}
+	
+	function httpGet(uri, onLoad) {
+		var xhr = new XMLHttpRequest();
+		xhr.addEventListener("load", function() {
+			console.log("loaded " + uri);
+			onLoad(this.responseText);
+		});
+		xhr.addEventListener("error", function() {
+			console.log("loading " + uri + " failed");
+			onLoad(this.responseText);
+		});
+		xhr.open("GET", uri);
+		xhr.send();
 	}
 	
 	function toSecondsNumber(xsdDurationString) {

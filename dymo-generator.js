@@ -205,12 +205,12 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	function updateParentDuration(parent, newDymo) {
 		var parentTime = parent.getFeature("time");
 		var newDymoTime = newDymo.getFeature("time");
-		if (!parentTime || newDymoTime < parentTime) {
+		if (!parentTime || Array.isArray(parentTime) || newDymoTime < parentTime) {
 			self.setDymoFeature(parent, "time", newDymoTime);
 		}
 		var parentDuration = parent.getFeature("duration");
 		var newDymoDuration = newDymo.getFeature("duration");
-		if (!parentDuration || parentTime+parentDuration < newDymoTime+newDymoDuration) {
+		if (!parentDuration || Array.isArray(parentDuration) || parentTime+parentDuration < newDymoTime+newDymoDuration) {
 			self.setDymoFeature(parent, "duration", newDymoTime+newDymoDuration - parentTime);
 		}
 	}
