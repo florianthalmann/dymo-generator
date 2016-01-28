@@ -12,13 +12,19 @@ function FeatureLoader() {
 	
 	var features = {}
 	
-	this.loadFeature = function(uri, labelCondition, generator, callback) {
-		var fileExtension = uri.split('.');
-		fileExtension = fileExtension[fileExtension.length-1];
-		if (fileExtension == 'n3') {
-			loadFeatureFromRdf(uri, labelCondition, generator, callback);
-		} else if (fileExtension == 'json') {
-			loadFeatureFromJson(uri, labelCondition, generator, callback);
+	this.loadFeature = function(uriOrJson, labelCondition, generator, callback) {
+		if (uriOrJson.constructor == Object) {
+			//it's a json!
+			loadFeatureFromJson(uriOrJson, labelCondition, generator, callback);
+		} else {
+			//just a uri..
+			var fileExtension = uriOrJson.split('.');
+			fileExtension = fileExtension[fileExtension.length-1];
+			if (fileExtension == 'n3') {
+				loadFeatureFromRdf(uriOrJson, labelCondition, generator, callback);
+			} else if (fileExtension == 'json') {
+				loadFeatureFromJsonUri(uriOrJson, labelCondition, generator, callback);
+			}
 		}
 	}
 		
@@ -143,23 +149,62 @@ function FeatureLoader() {
 		}
 	}
 	
-	function loadFeatureFromJson(jsonUri, labelCondition, generator, callback) {
+	function loadFeatureFromJsonUri(jsonUri, labelCondition, generator, callback) {
 		httpGet(jsonUri, function(json) {
-			json = JSON.parse(json);
-			var results = json[Object.keys(json)[1]][0];
-			var outputId = results.annotation_metadata.annotator.output_id;
-			if (outputId == "beats" || outputId == "onsets") {
-				results = results.data;
-				if (labelCondition && results[0].label) {
-					results = results.filter(function(x) { return x.label.value == labelCondition; });
-				}
-				generator.addSegmentation(results);
-				callback();
-			} else {
-				generator.addFeature(outputId, results.data);
-				callback();
-			}
+			loadFeatureFromJson(JSON.parse(json), labelCondition, generator, callback);
 		});
+	}
+	
+	function loadFeatureFromJson(json, labelCondition, generator, callback) {
+		if (Object.keys(json)[0] == "file_metadata") {
+			loadFeatureFromJams(json, labelCondition, generator, callback);
+		} else {
+			loadFeatureFromJsonLd(json, labelCondition, generator, callback);
+		}
+	}
+	
+	function loadFeatureFromJams(json, labelCondition, generator, callback) {
+		var results = json[Object.keys(json)[1]][0];
+		var outputId = results.annotation_metadata.annotator.output_id;
+		if (outputId == "beats" || outputId == "onsets") {
+			results = results.data;
+			if (labelCondition && results[0].label) {
+				results = results.filter(function(x) { return x.label.value == labelCondition; });
+			}
+			generator.addSegmentation(results);
+			callback();
+		} else {
+			generator.addFeature(outputId, results.data);
+			callback();
+		}
+	}
+	
+	function loadFeatureFromJsonLd(json, labelCondition, generator, callback) {
+		var type = json["@type"];
+		if (type == "afv:BarandBeatTracker" || outputId == "afv:Onsets") {
+			var values = json["afo:values"];
+			if (labelCondition && values[0]["afo:value"]) {
+				values = values.filter(function(x) { return x["afo:value"] == labelCondition; });
+			}
+			values = convertJsonLdEventsToJson(values);
+			generator.addSegmentation(values);
+			callback();
+		} else {
+			generator.addFeature(outputId, json["afo:values"]);
+			callback();
+		}
+	}
+	
+	function convertJsonLdEventsToJson(events) {
+		var times = [];
+		for (var i = 0; i < events.length; i++) {
+			//insert value/label pairs
+			times.push({
+				time: {value: events[i]["tl:at"]},
+				label: {value: events[i]["afo:value"]}
+			});
+		}
+		return times;
 	}
 	
 	function loadGraph(dmo, parameterUri, jsonUri) {

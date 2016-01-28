@@ -1,6 +1,6 @@
 {
   "name": "dymo-generator",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "homepage": "https://github.com/florianthalmann/dymo-generator",
   "description": "A package that creates dymos from feature files",
   "main": "dymo-generator.js",
