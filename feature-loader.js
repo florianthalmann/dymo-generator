@@ -181,7 +181,7 @@ function FeatureLoader() {
 	
 	function loadFeatureFromJsonLd(json, labelCondition, generator, callback) {
 		var type = json["@type"];
-		if (type == "afv:BarandBeatTracker" || outputId == "afv:Onsets") {
+		if (type == "afv:BarandBeatTracker" || type == "afv:Onsets") {
 			var values = json["afo:values"];
 			if (labelCondition && values[0]["afo:value"]) {
 				values = values.filter(function(x) { return x["afo:value"] == labelCondition; });
@@ -190,7 +190,7 @@ function FeatureLoader() {
 			generator.addSegmentation(values);
 			callback();
 		} else {
-			generator.addFeature(outputId, json["afo:values"]);
+			generator.addFeature(type, json["afo:values"]);
 			callback();
 		}
 	}
