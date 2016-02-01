@@ -51,7 +51,13 @@ function FeatureLoader() {
 											callback();
 										} else {
 											loadSignalFeatureFromRdf(store, function(results) {
-												generator.addFeature(results[0].name.value, convertRdfSignalToJson(results[0]));
+												var name = getValue(results[0].name);
+												if (!name) {
+													var split = rdfUri.split('_');
+													name = split[split.length-1].split('.')[0];
+												}
+												var dimensions = results[0].dimensions.value.split(' ').map(function(d){ return Number.parseInt(d); });
+												generator.addFeature(name, convertRdfSignalToJson(results[0], dimensions));
 												callback();
 											});
 										}
@@ -104,13 +110,14 @@ function FeatureLoader() {
 	}
 	
 	function loadSignalFeatureFromRdf(store, callback) {
-		store.execute("SELECT ?values ?name ?stepSize ?sampleRate \
+		store.execute("SELECT ?values ?name ?stepSize ?sampleRate ?dimensions \
 			WHERE { ?signal a ?signalType . \
 			?signal <"+featureOntology+"value> ?values . \
-			?signalType <"+dublincoreOntology+"title> ?name . \
+			?signal <"+featureOntology+"dimensions> ?dimensions . \
 			?signal <"+vampOntology+"computed_by> ?transform . \
 			?transform <"+vampOntology+"step_size> ?stepSize . \
-			?transform <"+vampOntology+"sample_rate> ?sampleRate . }", function(err, results) {
+			?transform <"+vampOntology+"sample_rate> ?sampleRate . \
+			OPTIONAL { ?signalType <"+dublincoreOntology+"title> ?name . } }", function(err, results) {
 				callback(results);
 			}
 		);
@@ -128,17 +135,23 @@ function FeatureLoader() {
 		return times;
 	}
 	
-	function convertRdfSignalToJson(results) {
+	function convertRdfSignalToJson(results, dimensions) {
 		var signal = results.values.value.split(" ").map(function(v) { return parseFloat(v); });
 		var stepSize = parseInt(results.stepSize.value);
 		var sampleRate = parseInt(results.sampleRate.value);
 		var values = [];
-		for (var i = 0; i < signal.length; i++) {
+		var i = 0;
+		while (i < signal.length) {
+			var currentValue = [];
+			for (var j = 0; j < dimensions[0]; j++) {
+				currentValue[j] = signal[i+j];
+			}
 			//insert value/label pairs
 			values.push({
 				time: {value: i*stepSize/sampleRate},
-				value: [signal[i]]
+				value: currentValue
 			});
+			i += dimensions[0];
 		}
 		return values;
 	}

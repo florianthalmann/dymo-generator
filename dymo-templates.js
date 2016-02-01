@@ -34,14 +34,16 @@ DymoTemplates.createGratefulDeadDymo = function(generator, $scope, $http) {
 	var dir = 'features/gd81-05-02.dmow.28304.sbeok.flacf/';
 	var uris = [];
 	uris[0] = dir+'gd1981-05-02d1t05_vamp_segmentino_segmentino_segmentation.n3';
-	uris[1] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
+	uris[1] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-chromagram_chromagram.n3';
+	/*uris[1] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
 	uris[2] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
 	uris[3] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_crest_crest.n3';
 	uris[4] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_loudness_loudness.n3';
 	uris[5] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_centroid_spectral_centroid.n3';
 	uris[6] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_standard_deviation_spectral_standard_deviation.n3';
-	uris[7] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_standard_deviation_standard_deviation.n3';
-	var conditions = ['', '1', '', '', '', '', '', ''];
+	uris[7] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_standard_deviation_standard_deviation.n3';*/
+	var conditions = ['', ''];
+	//var conditions = ['', '1', '', '', '', '', '', ''];
 	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
 		$scope.$apply();
 	});

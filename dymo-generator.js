@@ -37,6 +37,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		for (var name in features) {
 			self.setDymoFeature(newDymo, getFeature(name), features[name]);
 		}
+		self.setDymoFeature(newDymo, getFeature("level"), dymo.getLevel());
 		var parts = dymo.getParts();
 		for (var i = 0; i < parts.length; i++) {
 			recursiveAddDymo(newDymo, parts[i]);
@@ -108,13 +109,22 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	function updateMinMax(dymo, feature) {
 		var value = dymo.getFeature(feature.name);
 		if (!isNaN(value)) {
-			if (feature.max == undefined) {
-				feature.min = value;
-				feature.max = value;
-			} else {
-				feature.min = Math.min(value, feature.min);
-				feature.max = Math.max(value, feature.max);
+			helpUpdateMinMax(feature, value);
+		} else if (value instanceof Array) {
+			//it's an array
+			for (var i = 0; i < value.length; i++) {
+				helpUpdateMinMax(feature, value[i]);
 			}
+		}
+	}
+	
+	function helpUpdateMinMax(feature, value) {
+		if (feature.max == undefined) {
+			feature.min = value;
+			feature.max = value;
+		} else {
+			feature.min = Math.min(value, feature.min);
+			feature.max = Math.max(value, feature.max);
 		}
 	}
 	
@@ -122,7 +132,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		return Object.keys(idToDymo).length;
 	}
 	
-	this.addFeature = function(name, data) {
+	this.addFeature = function(name, data, dimensions) {
 		//iterate through all levels and add averages
 		var feature = getFeature(name);
 		for (var i = 0; i < this.dymoGraph.nodes.length; i++) {
@@ -137,22 +147,25 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		updateGraphAndMap();
 	}
 	
-	//condenses the given values into one value based on condensationMode
-	function getCondensedValues(values) {
-		var value = 0;
-		if (condensationMode == FIRST) {
-			value = values[0].value[0];
-		} else if (condensationMode == MEAN) {
-			value = values.reduce(function(sum, i) { return sum + i.value[0]; }, 0) / values.length;
-		} else if (condensationMode == MEDIAN) {
-			values.sort(function(a, b) { return a.value[0] - b.value[0]; });
-			var middleIndex = Math.floor(values.length/2);
-			value = values[middleIndex].value[0];
-			if (values.length % 2 == 0) {
-				value += values[middleIndex-1].value[0];
+	//condenses the given vectors into one based on condensationMode
+	function getCondensedValues(vectors) {
+		var vector = [];
+		var dim = vectors[0].value.length;
+		for (var k = 0; k < dim; k++) {
+			if (condensationMode == FIRST) {
+				vector[k] = vectors[0].value[k];
+			} else if (condensationMode == MEAN) {
+				vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;
+			} else if (condensationMode == MEDIAN) {
+				vectors.sort(function(a, b) { return a.value[k] - b.value[k]; });
+				var middleIndex = Math.floor(values.length/2);
+				vector[k] = vectors[middleIndex].value[k];
+				if (vectors.length % 2 == 0) {
+					vector[k] += vectors[middleIndex-1].value[k];
+				}
 			}
 		}
-		return value;
+		return vector;
 	}
 	
 	this.addSegmentation = function(segments) {
