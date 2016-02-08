@@ -29,47 +29,45 @@ function FeatureLoader() {
 	}
 		
 	function loadFeatureFromRdf(rdfUri, labelCondition, generator, callback) {
-		/*if (features[rdfUri]) {
-			setFeatureFromRdf(rdfUri, labelCondition, generator);
-		} else {*/
-			
-			httpGet(rdfUri, function(data) {
-				rdfstore.create(function(err, store) {
-					store.load('text/turtle', data, function(err, results) {
-						if (err) {
-							console.log(err);
-							callback();
-						} else {
-							loadSegmentationFeatureFromRdf(store, function(results) {
-								if (results.length > 0) {
-									addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
+		httpGet(rdfUri, function(data) {
+			parseN3(data, function (store) {
+				loadSegmentationFeatureFromRdf(store, function(results) {
+					if (results.length > 0) {
+						addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
+						callback();
+					} else {
+						loadSegmentinoFeatureFromRdf(store, function(results) {
+							if (results.length > 0) {
+								addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
+								callback();
+							} else {
+								loadSignalFeatureFromRdf(store, function(results) {
+									var name = getValue(results[0].name);
+									if (!name) {
+										var split = rdfUri.split('_');
+										name = split[split.length-1].split('.')[0];
+									}
+									var dimensions = results[0].dimensions.value.split(' ').map(function(d){ return Number.parseInt(d); });
+									generator.addFeature(name, convertRdfSignalToJson(results[0], dimensions));
 									callback();
-								} else {
-									loadSegmentinoFeatureFromRdf(store, function(results) {
-										if (results.length > 0) {
-											addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
-											callback();
-										} else {
-											loadSignalFeatureFromRdf(store, function(results) {
-												var name = getValue(results[0].name);
-												if (!name) {
-													var split = rdfUri.split('_');
-													name = split[split.length-1].split('.')[0];
-												}
-												var dimensions = results[0].dimensions.value.split(' ').map(function(d){ return Number.parseInt(d); });
-												generator.addFeature(name, convertRdfSignalToJson(results[0], dimensions));
-												callback();
-											});
-										}
-									});
-								}
-							});
-						}
-						
-					});
+								});
+							}
+						});
+					}
 				});
-			});
-			//}
+			}
+		});
+	}
+	
+	function parseN3(data, callback) {
+		var store = N3.Store();
+		N3.Parser().parse(data, function(error, triple, prefixes) {
+			if (triple) {
+				store.addTriple(triple);
+			} else {
+				callback(store);
+			}
+		});
 	}
 	
 	function addSegmentationFromRdf(rdfUri, labelCondition, generator, results) {
