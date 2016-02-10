@@ -150,22 +150,28 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	//condenses the given vectors into one based on condensationMode
 	function getCondensedValues(vectors) {
 		var vector = [];
-		var dim = vectors[0].value.length;
-		for (var k = 0; k < dim; k++) {
-			if (condensationMode == FIRST) {
-				vector[k] = vectors[0].value[k];
-			} else if (condensationMode == MEAN) {
-				vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;
-			} else if (condensationMode == MEDIAN) {
-				vectors.sort(function(a, b) { return a.value[k] - b.value[k]; });
-				var middleIndex = Math.floor(values.length/2);
-				vector[k] = vectors[middleIndex].value[k];
-				if (vectors.length % 2 == 0) {
-					vector[k] += vectors[middleIndex-1].value[k];
+		if (vectors.length > 0) {
+			var dim = vectors[0].value.length;
+			for (var k = 0; k < dim; k++) {
+				if (condensationMode == FIRST) {
+					vector[k] = vectors[0].value[k];
+				} else if (condensationMode == MEAN) {
+					vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;
+				} else if (condensationMode == MEDIAN) {
+					vectors.sort(function(a, b) { return a.value[k] - b.value[k]; });
+					var middleIndex = Math.floor(values.length/2);
+					vector[k] = vectors[middleIndex].value[k];
+					if (vectors.length % 2 == 0) {
+						vector[k] += vectors[middleIndex-1].value[k];
+					}
 				}
 			}
+			if (vector.length == 1) {
+				return vector[0];
+			}
+			return vector;
 		}
-		return vector;
+		return 0;
 	}
 	
 	this.addSegmentation = function(segments) {
@@ -176,16 +182,27 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 			maxDepth = currentTopDymo.getLevel();
 			audioFileChanged = false;
 		}
-		for (var i = 0; i < segments.length-1; i++) {
+		for (var i = 0; i < segments.length; i++) {
 			parent = getSuitableParent(segments[i].time.value);
-			var newDymo = this.addDymo(parent);
 			var startTime = segments[i].time.value;
-			this.setDymoFeature(newDymo, "time", startTime);
-			this.setDymoFeature(newDymo, "duration", segments[i+1].time.value - startTime);
-			if (segments[i].label && !isNaN(segments[i].label)) {
-				this.setDymoFeature(newDymo, "segmentLabel", segments[i].label.value);
+			var duration;
+			if (segments[i].duration) {
+				duration = segments[i].duration.value;
+			} else if (segments[i+1]) {
+				duration = segments[i+1].time.value - startTime;
+			} else if (parent.getFeature("time") && parent.getFeature("duration")) {
+				duration = parent.getFeature("time") + parent.getFeature("duration") - startTime;
 			}
-			updateParentDuration(parent, newDymo);
+			//don't want anything with duration 0 (what other feature values would it have?)
+			if (duration > 0) {
+				var newDymo = this.addDymo(parent);
+				this.setDymoFeature(newDymo, "time", startTime);
+				this.setDymoFeature(newDymo, "duration", duration);
+				if (segments[i].label && !isNaN(segments[i].label)) {
+					this.setDymoFeature(newDymo, "segmentLabel", segments[i].label.value);
+				}
+				updateParentDuration(parent, newDymo);
+			}
 		}
 		updateGraphAndMap();
 		maxDepth++;
@@ -218,12 +235,12 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	function updateParentDuration(parent, newDymo) {
 		var parentTime = parent.getFeature("time");
 		var newDymoTime = newDymo.getFeature("time");
-		if (!parentTime || Array.isArray(parentTime) || newDymoTime < parentTime) {
+		if (isNaN(parentTime) || Array.isArray(parentTime) || newDymoTime < parentTime) {
 			self.setDymoFeature(parent, "time", newDymoTime);
 		}
 		var parentDuration = parent.getFeature("duration");
 		var newDymoDuration = newDymo.getFeature("duration");
-		if (!parentDuration || Array.isArray(parentDuration) || parentTime+parentDuration < newDymoTime+newDymoDuration) {
+		if (isNaN(parentDuration) || Array.isArray(parentDuration) || parentTime+parentDuration < newDymoTime+newDymoDuration) {
 			self.setDymoFeature(parent, "duration", newDymoTime+newDymoDuration - parentTime);
 		}
 	}

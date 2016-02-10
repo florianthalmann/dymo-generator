@@ -31,39 +31,91 @@ DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, o
 }*/
 
 DymoTemplates.createGratefulDeadDymo = function(generator, $scope, $http) {
-	var dir = 'features/gd81-05-02.dmow.28304.sbeok.flacf/';
+	var dir = 'features/gd_test/Candyman/_studio/';
 	var uris = [];
 	uris[0] = dir+'gd1981-05-02d1t05_vamp_segmentino_segmentino_segmentation.n3';
-	uris[1] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
+	//uris[1] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
 	//uris[2] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-barbeattracker_beats.n3';
-	/*uris[3] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_crest_crest.n3';
-	uris[4] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_loudness_loudness.n3';
-	uris[5] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_centroid_spectral_centroid.n3';
-	uris[6] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_standard_deviation_spectral_standard_deviation.n3';
-	uris[7] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-chromagram_chromagram.n3';
-	uris[8] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-chromagram_chromagram.n3';*/
+	uris[1] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_crest_crest.n3';
+	uris[2] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_loudness_loudness.n3';
+	uris[3] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_centroid_spectral_centroid.n3';
+	uris[4] = dir+'gd1981-05-02d1t05_vamp_vamp-libxtract_spectral_standard_deviation_spectral_standard_deviation.n3';
+	uris[5] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-chromagram_chromagram.n3';
+	uris[6] = dir+'gd1981-05-02d1t05_vamp_qm-vamp-plugins_qm-mfcc_coefficients.n3';
 	//var conditions = ['', ''];
 	var conditions = ['', '1', '', '', '', '', '', ''];
 	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
-		Similarity.addSimilarities(generator.dymo);
+		Similarity.addSimilaritiesTo(generator.dymo);
+		generator.similarityGraph = generator.dymo.toJsonSimilarityGraph();
+		console.log(generator.similarityGraph)
 		$scope.$apply();
 	});
-	
-	/*$http.get('getallfiles/', {params:{directory:'/Volumes/FastSSD/gd_test/Bird_Song/gd81-05-02.dmow.28304.sbeok.flacf/'}}).success(function(fileList) {
+}
+
+DymoTemplates.createGratefulDeadDymos = function(generator, $scope, $http) {
+	var basedir = 'app/features/gd_test/';
+	$http.get('getallfiles/', {params:{directory:basedir}}).success(function(songs) {
 		//keep only folders
-		fileList = fileList.filter(function(f) {
-			return f.indexOf('.') < 0;
+		songs = songs.filter(function(s) { return s.indexOf('.') < 0; });
+		var versionUris = [];
+		getNextVersions(0);
+		function getNextVersions(i) {
+			if (i < songs.length) {
+				console.log(songs[i])
+				$http.get('getallfiles/', {params:{directory:basedir+songs[i]+'/'}}).success(function(versions) {
+					//keep only folders
+					versions = versions.filter(function(s) { return s.indexOf('.DS_Store') < 0; });
+					for (var j = 0; j < versions.length; j++) {
+						versionUris.push(basedir+songs[i]+'/'+versions[j]+'/');
+					}
+					getNextVersions(i+1);
+				});
+			} else {
+				console.log(versionUris)
+				DymoTemplates.loadAndSaveMultipleDeadDymos(generator, versionUris, 0, $http);
+			}
+		}
+	});
+}
+
+DymoTemplates.loadAndSaveMultipleDeadDymos = function(generator, versions, i, $http) {
+	if (i < versions.length) {
+		$http.get('getallfiles/', {params:{directory:versions[i]}}).success(function(features) {
+			var versiondir = versions[i].substring(versions[i].indexOf('/'));
+			var uris = getUris(versiondir, features, ['segmentation.n3','crest.n3','loudness.n3','spectral_centroid.n3','standard_deviation.n3','chromagram.n3','mfcc_coefficients.n3']);
+			var conditions = ['', '', '', '', '', '', '', ''];
+			DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
+				Similarity.addSimilaritiesTo(generator.dymo);
+				generator.similarityGraph = generator.dymo.toJsonSimilarityGraph();
+				var filename = versiondir.substring(0,versiondir.length-1);
+				filename = filename.substring(filename.lastIndexOf('/')+1)+'.dymo.json';
+				new DymoWriter($http).writeDymoToJson(generator.dymo.toJsonHierarchy(), versiondir, filename);
+				generator.resetDymo();
+				DymoTemplates.loadAndSaveMultipleDeadDymos(generator, versions, i+1, $http);
+			});
 		});
-		console.log(fileList);
-	});*/
+	}
+}
+
+function getUris(dir, files, names) {
+	var uris = [];
+	for (var i = 0, l = names.length; i < l; i++) {
+		var currentFile = files.filter(function(s) { return s.indexOf(names[i]) > 0; })[0];
+		if (currentFile) {
+			uris.push(dir+currentFile);
+		}
+	}
+	return uris;
 }
 
 DymoTemplates.loadMultipleFeatures = function(generator, uris, conditions, i, onLoad) {
 	var loader = new FeatureLoader();
-	if (i < uris.length) {
+	if (i < uris.length && uris[i]) {
 		loader.loadFeature(uris[i], conditions[i], generator, function() {
 			DymoTemplates.loadMultipleFeatures(generator, uris, conditions, i+1, onLoad);
 		});
+	} else if (i < uris.length-1) {
+		DymoTemplates.loadMultipleFeatures(generator, uris, conditions, i+1, onLoad);
 	} else if (onLoad) {
 		onLoad();
 	}

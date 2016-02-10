@@ -27,7 +27,11 @@ function FeatureLoader() {
 			}
 		}
 	}
-		
+	
+	
+	
+	//////////// RDF //////////////
+	
 	function loadFeatureFromRdf(rdfUri, labelCondition, generator, callback) {
 		httpGet(rdfUri, function(data) {
 			parseN3(data, function (store) {
@@ -36,26 +40,18 @@ function FeatureLoader() {
 						addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
 						callback();
 					} else {
-						loadSegmentinoFeatureFromRdf(store, function(results) {
-							if (results.length > 0) {
-								addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
-								callback();
-							} else {
-								loadSignalFeatureFromRdf(store, function(results) {
-									var name = getValue(results[0].name);
-									if (!name) {
-										var split = rdfUri.split('_');
-										name = split[split.length-1].split('.')[0];
-									}
-									var dimensions = results[0].dimensions.value.split(' ').map(function(d){ return Number.parseInt(d); });
-									generator.addFeature(name, convertRdfSignalToJson(results[0], dimensions));
-									callback();
-								});
+						loadSignalFeatureFromRdf(store, function(results) {
+							var name = results.name;
+							if (!name) {
+								var split = rdfUri.split('_');
+								name = split[split.length-1].split('.')[0];
 							}
+							generator.addFeature(name, results.values);
+							callback();
 						});
 					}
 				});
-			}
+			});
 		});
 	}
 	
@@ -70,8 +66,78 @@ function FeatureLoader() {
 		});
 	}
 	
-	function addSegmentationFromRdf(rdfUri, labelCondition, generator, results) {
-		var times = convertRdfEventsToJson(results);
+	function loadSegmentationFeatureFromRdf(store, callback) {
+		//for now looks at anything containing event times
+		var times = [];
+		var events = store.find(null, eventOntology+'time', null);
+		for (var i = 0, l = events.length; i < l; i++) {
+			var time = findObjectInStore(store, events[i].object, timelineOntology+'at');
+			if (!time) {
+				time = findObjectInStore(store, events[i].object, timelineOntology+'beginsAt');
+			}
+			var duration = findObjectInStore(store, events[i].object, timelineOntology+'duration');
+			var timeObject = {
+				time: {value: parseXsdNumber(time)},
+				label: {value: parseXsdString(findObjectInStore(store, events[i].subject, rdfsUri+'label'))}
+			};
+			if (duration) {
+				timeObject.duration = {value: parseXsdNumber(duration)};
+			}
+			times.push(timeObject);
+		}
+		callback(times);
+	}
+	
+	function loadSignalFeatureFromRdf(store, callback) {
+		var name = parseXsdString(findObjectInStore(store, null, dublincoreOntology+'title'));
+		var signal = parseXsdString(findObjectInStore(store, null, featureOntology+'value'));
+		signal = signal.split(" ").map(function(v) { return parseFloat(v); });
+		var dimensions = parseXsdString(findObjectInStore(store, null, featureOntology+'dimensions'));
+		dimensions = dimensions.split(' ').map(function(d){ return Number.parseInt(d); });
+		var transform = findObjectInStore(store, null, vampOntology+'computed_by');
+		var stepSize = parseXsdNumber(findObjectInStore(store, transform, vampOntology+'step_size'));
+		var sampleRate = parseXsdNumber(findObjectInStore(store, transform, vampOntology+'sample_rate'));
+		
+		var values = [];
+		var i = 0;
+		while (i < signal.length) {
+			var currentValue = [];
+			for (var j = 0; j < dimensions[0]; j++) {
+				currentValue[j] = signal[i+j];
+			}
+			//insert time/value pairs
+			values.push({
+				time: {value: i*stepSize/sampleRate},
+				value: currentValue
+			});
+			i += dimensions[0];
+		}
+		callback({name:name, values:values});
+	}
+	
+	function findObjectInStore(store, subject, predicate) {
+		var result = store.find(subject, predicate, null);
+		if (result.length > 0) {
+			return result[0].object;
+		}
+	}
+	
+	function parseXsdString(string) {
+		if (string) {
+			return N3.Util.getLiteralValue(string);
+		}
+	}
+	
+	function parseXsdNumber(string) {
+		var value = N3.Util.getLiteralValue(string);
+		if (value.charAt(0) == 'P') {
+			//xsd duration!
+			value = value.substring(2, value.length-1);
+		}
+		return Number(value);
+	}
+	
+	function addSegmentationFromRdf(rdfUri, labelCondition, generator, times) {
 		//save so that file does not have to be read twice
 		features[rdfUri] = times.sort(function(a,b){return a.time.value - b.time.value});
 		var subset = features[rdfUri];
@@ -81,84 +147,9 @@ function FeatureLoader() {
 		generator.addSegmentation(subset);
 	}
 	
-	function loadSegmentationFeatureFromRdf(store, callback) {
-		//for now looks at anything containing event times
-		//?eventType <"+rdfsUri+"#subClassOf>* <"+eventOntology+"#Event> . \
-		store.execute("SELECT ?xsdTime ?label \
-			WHERE { ?event a ?eventType . \
-			?event <"+eventOntology+"time> ?time . \
-			?time <"+timelineOntology+"at> ?xsdTime . \
-			OPTIONAL { ?event <"+rdfsUri+"label> ?label . } }", function(err, results) {
-				callback(results);
-			}
-		);
-	}
 	
-	function loadSegmentinoFeatureFromRdf(store, callback) {
-		//for now looks at anything containing event times
-		//?eventType <"+rdfsUri+"#subClassOf>* <"+eventOntology+"#Event> . \
-		store.execute("SELECT ?xsdTime ?label \
-			WHERE { ?event a ?eventType . \
-			?event <"+eventOntology+"time> ?time . \
-			?time <"+timelineOntology+"beginsAt> ?xsdTime . \
-			OPTIONAL { ?event <"+rdfsUri+"label> ?label . } }", function(err, results) {
-				callback(results);
-			}
-		);
-	}
 	
-	function loadSignalFeatureFromRdf(store, callback) {
-		store.execute("SELECT ?values ?name ?stepSize ?sampleRate ?dimensions \
-			WHERE { ?signal a ?signalType . \
-			?signal <"+featureOntology+"value> ?values . \
-			?signal <"+featureOntology+"dimensions> ?dimensions . \
-			?signal <"+vampOntology+"computed_by> ?transform . \
-			?transform <"+vampOntology+"step_size> ?stepSize . \
-			?transform <"+vampOntology+"sample_rate> ?sampleRate . \
-			OPTIONAL { ?signalType <"+dublincoreOntology+"title> ?name . } }", function(err, results) {
-				callback(results);
-			}
-		);
-	}
-	
-	function convertRdfEventsToJson(results) {
-		var times = [];
-		for (var i = 0; i < results.length; i++) {
-			//insert value/label pairs
-			times.push({
-				time: {value: toSecondsNumber(results[i].xsdTime.value)},
-				label: {value: getValue(results[i].label)}
-			});
-		}
-		return times;
-	}
-	
-	function convertRdfSignalToJson(results, dimensions) {
-		var signal = results.values.value.split(" ").map(function(v) { return parseFloat(v); });
-		var stepSize = parseInt(results.stepSize.value);
-		var sampleRate = parseInt(results.sampleRate.value);
-		var values = [];
-		var i = 0;
-		while (i < signal.length) {
-			var currentValue = [];
-			for (var j = 0; j < dimensions[0]; j++) {
-				currentValue[j] = signal[i+j];
-			}
-			//insert value/label pairs
-			values.push({
-				time: {value: i*stepSize/sampleRate},
-				value: currentValue
-			});
-			i += dimensions[0];
-		}
-		return values;
-	}
-	
-	function getValue(result) {
-		if (result) {
-			return result.value;
-		}
-	}
+	//////////// JSON //////////////
 	
 	function loadFeatureFromJsonUri(jsonUri, labelCondition, generator, callback) {
 		httpGet(jsonUri, function(json) {
@@ -236,10 +227,6 @@ function FeatureLoader() {
 		});
 		xhr.open("GET", uri);
 		xhr.send();
-	}
-	
-	function toSecondsNumber(xsdDurationString) {
-		return Number(xsdDurationString.substring(2, xsdDurationString.length-1));
 	}
 	
 }

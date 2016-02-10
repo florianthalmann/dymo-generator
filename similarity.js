@@ -9,7 +9,7 @@ Similarity.addSimilaritiesTo = function(dymo) {
 			var similarities = Similarity.getCosineSimilarities(vectorMap);
 			for (var uri1 in similarities) {
 				for (var uri2 in similarities[uri1]) {
-					if (similarities[uri1][uri2] > 0.8) {
+					if (similarities[uri1][uri2] > 0.994) {
 						dymoMap[uri1].addSimilar(dymoMap[uri2]);
 						dymoMap[uri2].addSimilar(dymoMap[uri1]);
 					}
@@ -30,18 +30,38 @@ Similarity.getAllParts = function(dymos) {
 
 Similarity.toVectors = function(dymos) {
 	var vectors = {};
+	var maxes = [];
 	//represent multidimensional ones with one value! cosine similarity with (1,1,...,1)?
 	for (var i = 0, l = dymos.length; i < l; i++) {
 		var currentVector = [];
-		var currentFeatures = dymo.getFeatures();
-		for (var featureName in dymo.getFeatures()) {
-			var feature = currentFeatures[featureName];
-			if (feature.length > 0) {
-				feature = Similarity.reduce(feature);
+		var currentFeatures = dymos[i].getFeatures();
+		var keys = Object.keys(currentFeatures);
+		for (var j = 0, m = keys.length; j < m; j++) {
+			var feature = currentFeatures[keys[j]];
+			if (feature.length > 1) {
+				//feature = Similarity.reduce(feature);
 			}
-			currentVector.push(feature);
+			if (!maxes[j]) {
+				maxes[j] = feature;
+			} else {
+				maxes[j] = Math.max(feature, maxes[j]);
+			}
+			if (feature.length > 1) {
+				Array.prototype.push.apply(currentVector, feature);
+			} else {
+				currentVector.push(feature);
+			}
 		}
 		vectors[dymos[i].getUri()] = currentVector;
+	}
+	//normalize the space
+	for (var i = 0, l = dymos.length; i < l; i++) {
+		var currentVector = vectors[dymos[i].getUri()];
+		for (var j = 0, m = currentVector.length; j < m; j++) {
+			if (maxes[j]) {
+				currentVector[j] /= maxes[j];
+			}
+		}
 	}
 	return vectors;
 }
@@ -56,6 +76,9 @@ Similarity.getCosineSimilarities = function(vectorMap) {
 	for (var uri1 in vectorMap) {
 		for (var uri2 in vectorMap) {
 			if (uri1 < uri2) {
+				if (!similarities[uri1]) {
+					similarities[uri1] = {};
+				}
 				similarities[uri1][uri2] = Similarity.getCosineSimilarity(vectorMap[uri1], vectorMap[uri2]);
 			}
 		}
