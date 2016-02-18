@@ -7,16 +7,39 @@ Similarity.addSimilaritiesTo = function(dymo) {
 		if (currentLevel.length > 1) {
 			var vectorMap = Similarity.toVectors(currentLevel);
 			var similarities = Similarity.getCosineSimilarities(vectorMap);
-			for (var uri1 in similarities) {
-				for (var uri2 in similarities[uri1]) {
-					if (similarities[uri1][uri2] > 0.994) {
-						dymoMap[uri1].addSimilar(dymoMap[uri2]);
-						dymoMap[uri2].addSimilar(dymoMap[uri1]);
-					}
-				}
-			}
+			Similarity.addHighestSimilarities(dymoMap, similarities, currentLevel.length);
+			//Similarity.addSimilaritiesAbove(dymoMap, similarities, 0.994);
 		}
 		currentLevel = Similarity.getAllParts(currentLevel);
+	}
+}
+
+Similarity.addSimilaritesAbove = function(dymoMap, similarities, threshold) {
+	for (var uri1 in similarities) {
+		for (var uri2 in similarities[uri1]) {
+			if (similarities[uri1][uri2] > threshold) {
+				dymoMap[uri1].addSimilar(dymoMap[uri2]);
+				dymoMap[uri2].addSimilar(dymoMap[uri1]);
+			}
+		}
+	}
+}
+
+Similarity.addHighestSimilarities = function(dymoMap, similarities, count) {
+	//gather all similarities in an array
+	var sortedSimilarities = [];
+	for (var uri1 in similarities) {
+		for (var uri2 in similarities[uri1]) {
+			sortedSimilarities.push([similarities[uri1][uri2], uri1, uri2]);
+		}
+	}
+	//sort in descending order
+	sortedSimilarities = sortedSimilarities.sort(function(a,b){return b[0] - a[0]});
+	//add highest ones to dymos
+	for (var i = 0, l = Math.min(sortedSimilarities.length, count); i < l; i++) {
+		var sim = sortedSimilarities[i];
+		dymoMap[sim[1]].addSimilar(dymoMap[sim[2]]);
+		dymoMap[sim[2]].addSimilar(dymoMap[sim[1]]);
 	}
 }
 

@@ -3,7 +3,7 @@ function DymoTemplates() { }
 //expects featurePaths to contain a bar and beat tracker file, followed by any other features
 DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, onLoad) {
 	var uris = [featureUris[0], featureUris[0]];
-	var conditions = ['1', ''];
+	var conditions = ['', '1'];
 	for (var i = 1; i < featureUris.length; i++) {
 		uris[i+1] = featureUris[i];
 		conditions[i+1] = '';
@@ -82,14 +82,13 @@ DymoTemplates.loadAndSaveMultipleDeadDymos = function(generator, versions, i, $h
 	if (i < versions.length) {
 		$http.get('getallfiles/', {params:{directory:versions[i]}}).success(function(features) {
 			var versiondir = versions[i].substring(versions[i].indexOf('/'));
-			var uris = getUris(versiondir, features, ['segmentation.n3','crest.n3','loudness.n3','spectral_centroid.n3','standard_deviation.n3','chromagram.n3','mfcc_coefficients.n3']);
-			var conditions = ['', '', '', '', '', '', '', ''];
-			DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
+			var urisAndConditions = getUris(versiondir, features, ['segmentation.n3','crest.n3','loudness.n3','spectral_centroid.n3','standard_deviation.n3','chromagram.n3','mfcc_coefficients.n3'], ['', '1', '', '', '', '', '', '', '']);
+			DymoTemplates.loadMultipleFeatures(generator, urisAndConditions[0], urisAndConditions[1], 0, function() {
 				Similarity.addSimilaritiesTo(generator.dymo);
 				generator.similarityGraph = generator.dymo.toJsonSimilarityGraph();
 				var filename = versiondir.substring(0,versiondir.length-1);
 				filename = filename.substring(filename.lastIndexOf('/')+1)+'.dymo.json';
-				new DymoWriter($http).writeDymoToJson(generator.dymo.toJsonHierarchy(), versiondir, filename);
+				new DymoWriter($http).writeDymoToJson(generator.dymo.toJsonHierarchy(), 'features/gd_equal_similarity2/', filename);
 				generator.resetDymo();
 				DymoTemplates.loadAndSaveMultipleDeadDymos(generator, versions, i+1, $http);
 			});
@@ -97,15 +96,17 @@ DymoTemplates.loadAndSaveMultipleDeadDymos = function(generator, versions, i, $h
 	}
 }
 
-function getUris(dir, files, names) {
+function getUris(dir, files, names, conditions) {
 	var uris = [];
+	var conds = [];
 	for (var i = 0, l = names.length; i < l; i++) {
 		var currentFile = files.filter(function(s) { return s.indexOf(names[i]) > 0; })[0];
 		if (currentFile) {
 			uris.push(dir+currentFile);
+			conds.push(conditions[i]);
 		}
 	}
-	return uris;
+	return [uris, conds];
 }
 
 DymoTemplates.loadMultipleFeatures = function(generator, uris, conditions, i, onLoad) {
