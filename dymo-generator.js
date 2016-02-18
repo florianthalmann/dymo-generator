@@ -2,7 +2,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	
 	var self = this;
 	
-	var dymo;
+	var topDymo;
 	var currentTopDymo; //the top dymo for the current audio file
 	var audioFileChanged;
 	var dymoGraph;
@@ -15,7 +15,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	var currentSourcePath;
 	
 	this.resetDymo = function() {
-		dymo = undefined;
+		topDymo = undefined;
 		currentTopDymo = undefined; //the top dymo for the current audio file
 		audioFileChanged = false;
 		dymoGraph = {"nodes":[], "links":[]};
@@ -32,7 +32,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	}
 	
 	this.getDymo = function() {
-		return dymo;
+		return topDymo;
 	}
 	
 	this.getDymoGraph = function() {
@@ -47,14 +47,14 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		return features;
 	}
 	
-	function recursiveAddDymo(parent, dymo) {
+	function recursiveAddDymo(parent, currentDymo) {
 		var newDymo = self.addDymo(parent);
-		var features = dymo.getFeatures();
+		var features = currentDymo.getFeatures();
 		for (var name in features) {
 			self.setDymoFeature(newDymo, getFeature(name), features[name]);
 		}
-		self.setDymoFeature(newDymo, getFeature("level"), dymo.getLevel());
-		var parts = dymo.getParts();
+		self.setDymoFeature(newDymo, getFeature("level"), currentDymo.getLevel());
+		var parts = currentDymo.getParts();
 		for (var i = 0; i < parts.length; i++) {
 			recursiveAddDymo(newDymo, parts[i]);
 		}
@@ -82,11 +82,11 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	}
 	
 	function insertTopDymo() {
-		if (dymo) {
+		if (topDymo) {
 			var newDymo = new DynamicMusicObject("dymo" + getDymoCount(), scheduler, PARALLEL);
-			newDymo.addPart(dymo);
-			dymo = newDymo;
-			updateGraphAndMap(dymo);
+			newDymo.addPart(topDymo);
+			topDymo = newDymo;
+			updateGraphAndMap(topDymo);
 		}
 	}
 	
@@ -96,8 +96,8 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 			uri = parent.getUri();
 		}
 		var newDymo = new DynamicMusicObject("dymo" + getDymoCount(), scheduler);
-		if (!dymo) {
-			dymo = newDymo;
+		if (!topDymo) {
+			topDymo = newDymo;
 		}
 		if (parent) {
 			parent.addPart(newDymo);
@@ -110,8 +110,8 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	}
 	
 	function updateGraphAndMap(dymo) {
-		dymoGraph = dymo.toJsonHierarchyGraph();
-		similarityGraph = dymo.toJsonSimilarityGraph();
+		dymoGraph = topDymo.toJsonHierarchyGraph();
+		similarityGraph = topDymo.toJsonSimilarityGraph();
 		if (dymo) {
 			var flatJson = dymo.toFlatJson();
 			idToDymo[dymo.getUri()] = dymo;
@@ -201,7 +201,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		if (getDymoCount() == 0) {
 			currentTopDymo = this.addDymo(undefined, currentSourcePath);
 		} else if (audioFileChanged) {
-			currentTopDymo = this.addDymo(dymo, currentSourcePath);
+			currentTopDymo = this.addDymo(topDymo, currentSourcePath);
 			maxDepth = currentTopDymo.getLevel();
 			audioFileChanged = false;
 		}
