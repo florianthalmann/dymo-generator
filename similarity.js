@@ -51,18 +51,19 @@ Similarity.getAllParts = function(dymos) {
 	return parts;
 }
 
-Similarity.toVectors = function(dymos) {
+//returns a map with a vector for each given dymo. if reduce is true, multidimensional ones are reduced
+Similarity.toVectors = function(dymos, reduce) {
 	var vectors = {};
 	var maxes = [];
-	//represent multidimensional ones with one value! cosine similarity with (1,1,...,1)?
 	for (var i = 0, l = dymos.length; i < l; i++) {
 		var currentVector = [];
 		var currentFeatures = dymos[i].getFeatures();
 		var keys = Object.keys(currentFeatures);
 		for (var j = 0, m = keys.length; j < m; j++) {
 			var feature = currentFeatures[keys[j]];
-			if (feature.length > 1) {
-				//feature = Similarity.reduce(feature);
+			//reduce all multidimensional vectors to one value
+			if (reduce && feature.length > 1) {
+				feature = Similarity.reduce(feature);
 			}
 			if (!maxes[j]) {
 				maxes[j] = feature;

@@ -2,33 +2,49 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	
 	var self = this;
 	
-	this.dymo;
+	var dymo;
 	var currentTopDymo; //the top dymo for the current audio file
 	var audioFileChanged;
-	this.dymoGraph;
-	this.similarityGraph;
+	var dymoGraph;
+	var similarityGraph;
 	var idToDymo;
 	var idToJson;
-	this.features;
+	var features;
 	var maxDepth;
 	var condensationMode = MEAN;
 	var currentSourcePath;
 	
 	this.resetDymo = function() {
-		this.dymo = undefined;
+		dymo = undefined;
 		currentTopDymo = undefined; //the top dymo for the current audio file
 		audioFileChanged = false;
-		this.dymoGraph = {"nodes":[], "links":[]};
-		this.similarityGraph = {"nodes":[], "links":[]};
+		dymoGraph = {"nodes":[], "links":[]};
+		similarityGraph = {"nodes":[], "links":[]};
 		idToDymo = {};
 		idToJson = {};
-		this.features = [createFeature("level"), createFeature("random", 0, 1)];
+		features = [createFeature("level"), createFeature("random", 0, 1)];
 		maxDepth = 0;
 	}
 	
 	this.setDymo = function(dymo, dymoMap) {
 		this.resetDymo();
 		recursiveAddDymo(undefined, dymo);
+	}
+	
+	this.getDymo = function() {
+		return dymo;
+	}
+	
+	this.getDymoGraph = function() {
+		return dymoGraph;
+	}
+	
+	this.getSimilarityGraph = function() {
+		return similarityGraph;
+	}
+	
+	this.getFeatures = function() {
+		return features;
 	}
 	
 	function recursiveAddDymo(parent, dymo) {
@@ -66,11 +82,11 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	}
 	
 	function insertTopDymo() {
-		if (self.dymo) {
+		if (dymo) {
 			var newDymo = new DynamicMusicObject("dymo" + getDymoCount(), scheduler, PARALLEL);
-			newDymo.addPart(self.dymo);
-			self.dymo = newDymo;
-			updateGraphAndMap(self.dymo);
+			newDymo.addPart(dymo);
+			dymo = newDymo;
+			updateGraphAndMap(dymo);
 		}
 	}
 	
@@ -80,8 +96,8 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 			uri = parent.getUri();
 		}
 		var newDymo = new DynamicMusicObject("dymo" + getDymoCount(), scheduler);
-		if (!self.dymo) {
-			self.dymo = newDymo;
+		if (!dymo) {
+			dymo = newDymo;
 		}
 		if (parent) {
 			parent.addPart(newDymo);
@@ -94,14 +110,14 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	}
 	
 	function updateGraphAndMap(dymo) {
-		self.dymoGraph = self.dymo.toJsonHierarchyGraph();
-		self.similarityGraph = self.dymo.toJsonSimilarityGraph();
+		dymoGraph = dymo.toJsonHierarchyGraph();
+		similarityGraph = dymo.toJsonSimilarityGraph();
 		if (dymo) {
 			var flatJson = dymo.toFlatJson();
 			idToDymo[dymo.getUri()] = dymo;
 			idToJson[dymo.getUri()] = flatJson;
-			for (var i = 0; i < self.features.length; i++) {
-				updateMinMax(dymo, self.features[i]);
+			for (var i = 0; i < features.length; i++) {
+				updateMinMax(dymo, features[i]);
 			}
 		}
 	}
@@ -135,9 +151,9 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	this.addFeature = function(name, data, dimensions) {
 		//iterate through all levels and add averages
 		var feature = getFeature(name);
-		for (var i = 0; i < this.dymoGraph.nodes.length; i++) {
-			var currentTime = this.dymoGraph.nodes[i]["time"].value;
-			var currentDuration = this.dymoGraph.nodes[i]["duration"].value;
+		for (var i = 0; i < dymoGraph.nodes.length; i++) {
+			var currentTime = dymoGraph.nodes[i]["time"].value;
+			var currentDuration = dymoGraph.nodes[i]["duration"].value;
 			var currentValues = data.filter(
 				function(x){return currentTime <= x.time.value && x.time.value < currentTime+currentDuration}
 			);
@@ -149,7 +165,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 				currentValues = currentValues[currentValues.length-1];
 			}
 			var value = getCondensedValues(currentValues);
-			this.setDymoFeature(this.getRealDymo(this.dymoGraph.nodes[i]), feature, value);
+			this.setDymoFeature(this.getRealDymo(dymoGraph.nodes[i]), feature, value);
 		}
 		updateGraphAndMap();
 	}
@@ -185,7 +201,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 		if (getDymoCount() == 0) {
 			currentTopDymo = this.addDymo(undefined, currentSourcePath);
 		} else if (audioFileChanged) {
-			currentTopDymo = this.addDymo(self.dymo, currentSourcePath);
+			currentTopDymo = this.addDymo(dymo, currentSourcePath);
 			maxDepth = currentTopDymo.getLevel();
 			audioFileChanged = false;
 		}
@@ -263,14 +279,14 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 	
 	function getFeature(name) {
 		//if already exists return that
-		for (var i = 0; i < self.features.length; i++) {
-			if (self.features[i].name == name) {
-				return self.features[i];
+		for (var i = 0; i < features.length; i++) {
+			if (features[i].name == name) {
+				return features[i];
 			}
 		}
 		//if doesn't exist make a new one
 		var newFeature = createFeature(name);
-		self.features.splice(self.features.length-2, 0, newFeature);
+		features.splice(features.length-2, 0, newFeature);
 		onFeatureAdded(newFeature);
 		return newFeature;
 	}
