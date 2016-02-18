@@ -141,6 +141,13 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 			var currentValues = data.filter(
 				function(x){return currentTime <= x.time.value && x.time.value < currentTime+currentDuration}
 			);
+			//event-based feature:
+			if (currentValues.length < 1) {
+				currentValues = data.filter(
+					function(x){return x.time.value < currentTime}
+				);
+				currentValues = currentValues[currentValues.length-1];
+			}
 			var value = getCondensedValues(currentValues);
 			this.setDymoFeature(this.getRealDymo(this.dymoGraph.nodes[i]), feature, value);
 		}

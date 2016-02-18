@@ -3,7 +3,7 @@ function DymoTemplates() { }
 //expects featurePaths to contain a bar and beat tracker file, followed by any other features
 DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, onLoad) {
 	var uris = [featureUris[0], featureUris[0]];
-	var conditions = ['', '1'];
+	var conditions = ['1', ''];
 	for (var i = 1; i < featureUris.length; i++) {
 		uris[i+1] = featureUris[i];
 		conditions[i+1] = '';

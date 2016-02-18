@@ -188,22 +188,35 @@ function FeatureLoader() {
 			if (labelCondition && values[0]["afo:value"]) {
 				values = values.filter(function(x) { return x["afo:value"] == labelCondition; });
 			}
-			values = convertJsonLdEventsToJson(values);
+			values = convertJsonLdLabelEventsToJson(values);
 			generator.addSegmentation(values);
 			callback();
 		} else {
-			generator.addFeature(type, json["afo:values"]);
+			var values = convertJsonLdValueEventsToJson(json["afo:values"]);
+			generator.addFeature(type, values);
 			callback();
 		}
 	}
 	
-	function convertJsonLdEventsToJson(events) {
+	function convertJsonLdLabelEventsToJson(events) {
 		var times = [];
 		for (var i = 0; i < events.length; i++) {
 			//insert value/label pairs
 			times.push({
 				time: {value: events[i]["tl:at"]},
 				label: {value: events[i]["afo:value"]}
+			});
+		}
+		return times;
+	}
+	
+	function convertJsonLdValueEventsToJson(events) {
+		var times = [];
+		for (var i = 0; i < events.length; i++) {
+			//insert value/label pairs
+			times.push({
+				time: {value: events[i]["tl:at"]},
+				value: [events[i]["afo:value"]]
 			});
 		}
 		return times;
