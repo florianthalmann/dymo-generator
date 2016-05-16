@@ -51,7 +51,9 @@ Similarity.getAllParts = function(dymos) {
 	return parts;
 }
 
-//returns a map with a vector for each given dymo. if reduce is true, multidimensional ones are reduced
+/**
+ * returns a map with a vector for each given dymo. if reduce is true, multidimensional ones are reduced
+ * @param {Boolean=} reduce (optional) */
 Similarity.toVectors = function(dymos, reduce) {
 	var vectors = {};
 	var maxes = [];

@@ -1,3 +1,6 @@
+/**
+ * @constructor
+ */
 function FeatureLoader() {
 	
 	var mobileRdfUri = "rdf/mobile.n3";
@@ -38,7 +41,9 @@ function FeatureLoader() {
 				loadSegmentationFeatureFromRdf(store, function(results) {
 					if (results.length > 0) {
 						addSegmentationFromRdf(rdfUri, labelCondition, generator, results);
-						callback();
+						if (callback) {
+							callback();
+						}
 					} else {
 						loadSignalFeatureFromRdf(store, function(results) {
 							var name = results.name;
@@ -47,7 +52,9 @@ function FeatureLoader() {
 								name = split[split.length-1].split('.')[0];
 							}
 							generator.addFeature(name, results.values);
-							callback();
+							if (callback) {
+								callback();
+							}
 						});
 					}
 				});
@@ -167,17 +174,21 @@ function FeatureLoader() {
 	
 	function loadFeatureFromJams(json, labelCondition, generator, callback) {
 		var results = json[Object.keys(json)[1]][0];
-		var outputId = results.annotation_metadata.annotator.output_id;
+		var outputId = results["annotation_metadata"]["annotator"]["output_id"];
 		if (outputId == "beats" || outputId == "onsets") {
 			results = results.data;
 			if (labelCondition && results[0].label) {
 				results = results.filter(function(x) { return x.label.value == labelCondition; });
 			}
 			generator.addSegmentation(results);
-			callback();
+			if (callback) {
+				callback();
+			}
 		} else {
 			generator.addFeature(outputId, results.data);
-			callback();
+			if (callback) {
+				callback();
+			}
 		}
 	}
 	
@@ -190,11 +201,15 @@ function FeatureLoader() {
 			}
 			values = convertJsonLdLabelEventsToJson(values);
 			generator.addSegmentation(values);
-			callback();
+			if (callback) {
+				callback();
+			}
 		} else {
 			var values = convertJsonLdValueEventsToJson(json["afo:values"]);
 			generator.addFeature(type, values);
-			callback();
+			if (callback) {
+				callback();
+			}
 		}
 	}
 	

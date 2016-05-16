@@ -1,4 +1,7 @@
-function DymoGenerator(scheduler, onFeatureAdded) {
+/**
+ * @constructor
+ */
+function DymoGenerator(scheduler, onFeatureAdded, onGraphsChanged) {
 	
 	var self = this;
 	
@@ -120,6 +123,9 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 				updateMinMax(dymo, features[i]);
 			}
 		}
+		if (onGraphsChanged) {
+			onGraphsChanged();
+		}
 	}
 	
 	function updateMinMax(dymo, feature) {
@@ -182,7 +188,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 					vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;
 				} else if (condensationMode == MEDIAN) {
 					vectors.sort(function(a, b) { return a.value[k] - b.value[k]; });
-					var middleIndex = Math.floor(values.length/2);
+					var middleIndex = Math.floor(vectors.length/2);
 					vector[k] = vectors[middleIndex].value[k];
 					if (vectors.length % 2 == 0) {
 						vector[k] += vectors[middleIndex-1].value[k];
@@ -206,7 +212,7 @@ function DymoGenerator(scheduler, onFeatureAdded) {
 			audioFileChanged = false;
 		}
 		for (var i = 0; i < segments.length; i++) {
-			parent = getSuitableParent(segments[i].time.value);
+			var parent = getSuitableParent(segments[i].time.value);
 			var startTime = segments[i].time.value;
 			var duration;
 			if (segments[i].duration) {

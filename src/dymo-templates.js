@@ -3,7 +3,7 @@ function DymoTemplates() { }
 //expects featurePaths to contain a bar and beat tracker file, followed by any other features
 DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, onLoad) {
 	var uris = [featureUris[0], featureUris[0]];
-	var conditions = ['', '1'];
+	var conditions = ['1',''];
 	for (var i = 1; i < featureUris.length; i++) {
 		uris[i+1] = featureUris[i];
 		conditions[i+1] = '';
@@ -122,13 +122,13 @@ DymoTemplates.loadMultipleFeatures = function(generator, uris, conditions, i, on
 	}
 }
 
-DymoTemplates.createSebastianDymo = function() {
+DymoTemplates.createSebastianDymo = function(generator, scheduler, $http) {
 	var dirPath = 'audio/Chopin_Op028-04_003_20100611-SMD/';
-	var onsetFeature = getFeature("onset");
-	var pitchFeature = getFeature("pitch");
-	var topDymo = addDymo();
-	setDymoFeature(topDymo, onsetFeature, 0);
-	setDymoFeature(topDymo, pitchFeature, 0);
+	var onsetFeature = generator.getFeature("onset");
+	var pitchFeature = generator.getFeature("pitch");
+	var topDymo = generator.addDymo();
+	generator.setDymoFeature(topDymo, onsetFeature, 0);
+	generator.setDymoFeature(topDymo, pitchFeature, 0);
 	$http.get('getsourcefilesindir/', {params:{directory:dirPath}}).success(function(data) {
 		var allFilenames = data;
 		allFilenames = allFilenames.filter(function(f) { return f.split("_").length - 1 > 4; });
@@ -138,25 +138,25 @@ DymoTemplates.createSebastianDymo = function() {
 			var onsetSegment = nameSegments[nameSegments.length-1];
 			var currentOnset = Number.parseInt(onsetSegment.substring(1, onsetSegment.indexOf('.')))/1000;
 			var currentPitch = Number.parseInt(nameSegments[nameSegments.length-3].substring(1));
-			var currentDymo = addDymo(topDymo, dirPath+allFilenames[i]);
-			setDymoFeature(currentDymo, onsetFeature, currentOnset);
-			setDymoFeature(currentDymo, pitchFeature, currentPitch);
+			var currentDymo = generator.addDymo(topDymo, dirPath+allFilenames[i]);
+			generator.setDymoFeature(currentDymo, onsetFeature, currentOnset);
+			generator.setDymoFeature(currentDymo, pitchFeature, currentPitch);
 		}
 		topDymo.updatePartOrder(onsetFeature.name);
 		//just to test similarity graph representation
-		new DymoLoader(scheduler).loadGraphFromJson('bower_components/dymo-core/example/similarity.json', idToDymo, function() {
-			updateGraphAndMap();
+		new DymoLoader(scheduler).loadGraphFromJson('bower_components/dymo-core/example/similarity.json', generator.idToDymo, function() {
+			generator.updateGraphAndMap();
 		}, $http);
 	});
 }
 
-DymoTemplates.createSebastianDymo2 = function() {
+DymoTemplates.createSebastianDymo2 = function(generator) {
 	var dirPath = 'audio/scale_out/scale_single/';
-	var onsetFeature = getFeature("onset");
-	var pitchFeature = getFeature("pitch");
-	var topDymo = addDymo();
-	setDymoFeature(topDymo, onsetFeature, 0);
-	setDymoFeature(topDymo, pitchFeature, 0);
+	var onsetFeature = generator.getFeature("onset");
+	var pitchFeature = generator.getFeature("pitch");
+	var topDymo = generator.addDymo();
+	generator.setDymoFeature(topDymo, onsetFeature, 0);
+	generator.setDymoFeature(topDymo, pitchFeature, 0);
 	$http.get('getsourcefilesindir/', {params:{directory:dirPath}}).success(function(data) {
 		var allFilenames = data;
 		allFilenames = allFilenames.filter(function(f) { return f.split("_").length - 1 > 4; });
@@ -165,9 +165,9 @@ DymoTemplates.createSebastianDymo2 = function() {
 			var nameSegments = allFilenames[i].split("_");
 			var currentOnset = Number.parseInt(nameSegments[4].substring(1))/1000;
 			var currentPitch = Number.parseInt(nameSegments[2].substring(1));
-			var currentDymo = addDymo(topDymo, dirPath+allFilenames[i]);
-			setDymoFeature(currentDymo, onsetFeature, currentOnset);
-			setDymoFeature(currentDymo, pitchFeature, currentPitch);
+			var currentDymo = generator.addDymo(topDymo, dirPath+allFilenames[i]);
+			generator.setDymoFeature(currentDymo, onsetFeature, currentOnset);
+			generator.setDymoFeature(currentDymo, pitchFeature, currentPitch);
 		}
 		topDymo.updatePartOrder(onsetFeature.name);
 	});
@@ -210,19 +210,19 @@ DymoTemplates.createSebastianDymo3 = function(generator, $http) {
 	});
 }
 
-DymoTemplates.createAchBachDymo = function() {
+DymoTemplates.createAchBachDymo = function(generator) {
 	var dirPath = 'audio/achachbach10/';
 	var fileName = '01-AchGottundHerr';
-	var onsetFeature = getFeature(ONSET_FEATURE);
-	var pitchFeature = getFeature(PITCH_FEATURE);
-	var durationFeature = getFeature(DURATION_FEATURE);
-	var onsetSFeature = getFeature("onsetS");
-	var durationSFeature = getFeature("durationS");
-	var timeFeature = getFeature("time");
-	var topDymo = addDymo();
-	setDymoFeature(topDymo, onsetFeature, 0);
-	setDymoFeature(topDymo, pitchFeature, 0);
-	setDymoFeature(topDymo, durationFeature, 0);
+	var onsetFeature = generator.getFeature(ONSET_FEATURE);
+	var pitchFeature = generator.getFeature(PITCH_FEATURE);
+	var durationFeature = generator.getFeature(DURATION_FEATURE);
+	var onsetSFeature = generator.getFeature("onsetS");
+	var durationSFeature = generator.getFeature("durationS");
+	var timeFeature = generator.getFeature("time");
+	var topDymo = generator.addDymo();
+	generator.setDymoFeature(topDymo, onsetFeature, 0);
+	generator.setDymoFeature(topDymo, pitchFeature, 0);
+	generator.setDymoFeature(topDymo, durationFeature, 0);
 	//setDymoFeature(topDymo, velocityFeature, 0);
 	//setDymoFeature(topDymo, onsetSFeature, 0);
 	//setDymoFeature(topDymo, durationSFeature, 0);
@@ -264,20 +264,20 @@ DymoTemplates.createAchBachDymo = function() {
 				var durationS = Number.parseInt(values[5])/1000;
 				var currentDymo;
 				if (values[3] == 1) {
-					currentDymo = addDymo(topDymo, dirPath+fileName+"-violin.wav");
+					currentDymo = generator.addDymo(topDymo, dirPath+fileName+"-violin.wav");
 				} else if (values[3] == 2) {
-					currentDymo = addDymo(topDymo, dirPath+fileName+"-clarinet.wav");
+					currentDymo = generator.addDymo(topDymo, dirPath+fileName+"-clarinet.wav");
 				} else if (values[3] == 3) {
-					currentDymo = addDymo(topDymo, dirPath+fileName+"-saxphone.wav");
+					currentDymo = generator.addDymo(topDymo, dirPath+fileName+"-saxphone.wav");
 				} else if (values[3] == 4) {
-					currentDymo = addDymo(topDymo, dirPath+fileName+"-bassoon.wav");
+					currentDymo = generator.addDymo(topDymo, dirPath+fileName+"-bassoon.wav");
 				}
-				setDymoFeature(currentDymo, pitchFeature, pitch);
-				setDymoFeature(currentDymo, timeFeature, onset);
-				setDymoFeature(currentDymo, onsetFeature, onset);
-				setDymoFeature(currentDymo, durationFeature, duration);
-				setDymoFeature(currentDymo, onsetSFeature, onsetS);
-				setDymoFeature(currentDymo, durationSFeature, durationS);
+				generator.setDymoFeature(currentDymo, pitchFeature, pitch);
+				generator.setDymoFeature(currentDymo, timeFeature, onset);
+				generator.setDymoFeature(currentDymo, onsetFeature, onset);
+				generator.setDymoFeature(currentDymo, durationFeature, duration);
+				generator.setDymoFeature(currentDymo, onsetSFeature, onsetS);
+				generator.setDymoFeature(currentDymo, durationSFeature, durationS);
 				currentDymo.getParameter(ONSET).update(onset); //so that it can immediately be played back..*/
 			}
 		}
@@ -293,7 +293,7 @@ DymoTemplates.createAchBachDymo = function() {
 	});
 }
 
-DymoTemplates.createAreasDemo = function(generator, areas) {
+/*DymoTemplates.createAreasDemo = function(generator, areas) {
 	generator.addDymo();
 	if (areas.length > 0) {
 		var brownianX = new BrownianControls();
@@ -330,7 +330,7 @@ DymoTemplates.createRandomAreasDemo = function(generator) {
 		generator.dymo.addMapping(new Mapping([brownianX.brownianControl, brownianY.brownianControl], false, currentAreaFunction, [currentDymo], AMPLITUDE));
 		currentDymo.getParameter(LOOP).update(1);
 	}
-}
+}*/
 
 function createRandomTriangle() {
 	return [{0:Math.random(),1:Math.random()},{0:Math.random(),1:Math.random()},{0:Math.random(),1:Math.random()}];
