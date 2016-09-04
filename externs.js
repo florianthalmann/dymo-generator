@@ -9,8 +9,10 @@ N3.Store = function(){};
 
 var $scope, $http;
 
-var PARALLEL, LOOP, AMPLITUDE, PLAY, ONSET;
-var DURATION_FEATURE, PITCH_FEATURE, ONSET_FEATURE;
+var DYMO, TYPE, LOOP, AMPLITUDE, PLAY, ONSET;
+var DURATION_FEATURE, PITCH_FEATURE, ONSET_FEATURE, TIME_FEATURE, LEVEL_FEATURE, SEGMENT_LABEL_FEATURE;
+var HAS_PART, HAS_SIMILAR;
+var CONTEXT_URI, URI_TO_TERM;
 var DynamicMusicObject, Mapping;
 DynamicMusicObject.getUri = function(){};
 DynamicMusicObject.getParts = function(){};
