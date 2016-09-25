@@ -1,4 +1,5 @@
 /**
+ * Offers basic functions for generating dymos, inserts them into the given store. The updateGraph function needs to be called manually.
  * @constructor
  */
 function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
@@ -6,14 +7,12 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	var self = this;
 	
 	var topDymo; //TODO REMOVE
-	var topDymoUri;
 	var currentTopDymo; //the top dymo for the current audio file
 	var audioFileChanged;
 	var dymoGraph;
 	var similarityGraph;
 	var features;
-	var maxDepth;
-	var condensationMode = MEAN;
+	var summarizingMode = MEAN;
 	var currentSourcePath;
 	var dymoCount = 0;
 	
@@ -26,13 +25,11 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		features = [];
 		addFeature("level", LEVEL_FEATURE)
 		addFeature("random", null, 0, 1);
-		maxDepth = 0;
 	}
 	
 	this.setDymo = function(dymo, dymoMap) {
 		this.resetDymo();
 		recursiveAddDymo(undefined, dymo);
-		updateGraphAndMap();
 	}
 	
 	this.getDymo = function() {
@@ -64,8 +61,8 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		}
 	}
 	
-	this.setCondensationMode = function(mode) {
-		condensationMode = mode;
+	this.setSummarizingMode = function(mode) {
+		summarizingMode = mode;
 	}
 	
 	this.setCurrentSourcePath = function(path) {
@@ -74,25 +71,23 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	
 	this.setAudioFileChanged = function() {
 		audioFileChanged = true;
-		if (topDymoUri) {
+		if (currentTopDymo) {
 			var dymoUri = getUniqueDymoUri();
-			store.addDymo(dymoUri, null, topDymoUri);
-			topDymoUri = dymoUri;
-			updateGraphAndMap();
+			store.addDymo(dymoUri, null, currentTopDymo);
+			currentTopDymo = dymoUri;
 		}
 	}
 	
 	this.addDymo = function(parentUri, sourcePath) {
-		var dymoUri = internalAddDymo();
-		updateGraphAndMap();
+		var dymoUri = internalAddDymo(parentUri, sourcePath);
 		return dymoUri;
 	}
 	
 	function internalAddDymo(parentUri, sourcePath) {
 		var dymoUri = getUniqueDymoUri();
 		store.addDymo(dymoUri, parentUri, null, sourcePath);
-		if (!topDymoUri) {
-			topDymoUri = dymoUri;
+		if (!parentUri) {
+			currentTopDymo = dymoUri;
 		}
 		return dymoUri;
 	}
@@ -103,9 +98,11 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		return dymoUri;
 	}
 	
-	function updateGraphAndMap() {
+	this.updateGraphs = function() {
+		Benchmarker.startTask("toPartGraph")
 		store.toJsonGraph(DYMO, HAS_PART, function(pg) {
 			dymoGraph = pg;
+			Benchmarker.startTask("toSimilarGraph")
 			store.toJsonGraph(DYMO, HAS_SIMILAR, function(sg) {
 				similarityGraph = sg;
 				if (onGraphsChanged) {
@@ -116,15 +113,21 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	}
 	
 	this.addFeature = function(name, data, dimensions) {
+		Benchmarker.startTask("addFeature")
+		initTopDymoIfNecessary();
 		var feature = addFeature(name);
 		//iterate through all levels and add averages
-		var dymos = store.findAllSubjectUris(TYPE, DYMO);
+		var dymos = store.findAllParts(currentTopDymo);
 		for (var i = 0; i < dymos.length; i++) {
 			var currentTime = store.findFeature(dymos[i], TIME_FEATURE);
 			var currentDuration = store.findFeature(dymos[i], DURATION_FEATURE);
-			var currentValues = data.filter(
-				function(x){return currentTime <= x.time.value && x.time.value < currentTime+currentDuration}
-			);
+			var currentValues = data;
+			if (!isNaN(currentTime)) {
+				//only filter data id time given
+				currentValues = currentValues.filter(
+					function(x){return currentTime <= x.time && (isNaN(currentDuration) || x.time < currentTime+currentDuration);}
+				);
+			}
 			//event-based feature:
 			if (currentValues.length < 1) {
 				currentValues = data.filter(
@@ -132,23 +135,30 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 				);
 				currentValues = currentValues[currentValues.length-1];
 			}
-			var value = getCondensedValues(currentValues);
+			Benchmarker.startTask("summarize")
+			var value = getSummarizedValues(currentValues);
+			//console.log(value)
 			this.setDymoFeature(dymos[i], feature.uri, value);
 		}
-		updateGraphAndMap();
 	}
 	
-	//condenses the given vectors into one based on condensationMode
-	function getCondensedValues(vectors) {
+	//summarizes the given vectors into one based on summarizingMode
+	function getSummarizedValues(vectors) {
 		var vector = [];
-		if (vectors.length > 0) {
+		if (vectors && vectors.length > 0) {
+			for (var i = 0; i < vectors.length; i++) {
+				if (vectors[i].value.constructor !== Array) {
+					//console.log(vectors[i].value)
+					vectors[i].value = [vectors[i].value];
+				}
+			}
 			var dim = vectors[0].value.length;
 			for (var k = 0; k < dim; k++) {
-				if (condensationMode == FIRST) {
+				if (summarizingMode == FIRST) {
 					vector[k] = vectors[0].value[k];
-				} else if (condensationMode == MEAN) {
+				} else if (summarizingMode == MEAN) {
 					vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;
-				} else if (condensationMode == MEDIAN) {
+				} else if (summarizingMode == MEDIAN) {
 					vectors.sort(function(a, b) { return a.value[k] - b.value[k]; });
 					var middleIndex = Math.floor(vectors.length/2);
 					vector[k] = vectors[middleIndex].value[k];
@@ -166,21 +176,15 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	}
 	
 	this.addSegmentation = function(segments) {
-		if (dymoCount == 0) {
-			currentTopDymo = internalAddDymo(undefined, currentSourcePath);
-		} else if (audioFileChanged) {
-			currentTopDymo = internalAddDymo(topDymo, currentSourcePath);
-			maxDepth = currentTopDymo.getLevel();
-			audioFileChanged = false;
-		}
+		initTopDymoIfNecessary();
 		for (var i = 0; i < segments.length; i++) {
-			var parentUri = getSuitableParent(segments[i].time.value);
-			var startTime = segments[i].time.value;
+			var parentUri = getSuitableParent(segments[i].time);
+			var startTime = segments[i].time;
 			var duration;
 			if (segments[i].duration) {
-				duration = segments[i].duration.value;
+				duration = segments[i].duration;
 			} else if (segments[i+1]) {
-				duration = segments[i+1].time.value - startTime;
+				duration = segments[i+1].time - startTime;
 			} else {
 				var parentTime = store.findFeature(parentUri, TIME_FEATURE);
 				var parentDuration = store.findFeature(parentUri, DURATION_FEATURE);
@@ -194,19 +198,25 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 				this.setDymoFeature(newDymo, TIME_FEATURE, startTime);
 				this.setDymoFeature(newDymo, DURATION_FEATURE, duration);
 				if (segments[i].label && !isNaN(segments[i].label)) {
-					this.setDymoFeature(newDymo, SEGMENT_LABEL_FEATURE, segments[i].label.value);
+					this.setDymoFeature(newDymo, SEGMENT_LABEL_FEATURE, segments[i].label);
 				}
 				updateParentDuration(parentUri, newDymo);
 			}
 		}
-		updateGraphAndMap();
-		maxDepth++;
+	}
+	
+	function initTopDymoIfNecessary() {
+		if (dymoCount == 0) {
+			currentTopDymo = internalAddDymo(undefined, currentSourcePath);
+		} else if (audioFileChanged) {
+			currentTopDymo = internalAddDymo(topDymo, currentSourcePath);
+			audioFileChanged = false;
+		}
 	}
 	
 	function getSuitableParent(time) {
 		var nextCandidate = currentTopDymo;
-		var depth = store.getLevel(currentTopDymo);
-		while (depth < maxDepth) {
+		while (true) {
 			var parts = store.findParts(nextCandidate);
 			if (parts.length > 0) {
 				parts = parts.map(function(p){return [store.findFeature(p, TIME_FEATURE), p]});
@@ -214,14 +224,12 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 				for (var i = 0; i < parts.length; i++) {
 					if (parts[i][0] <= time) {
 						nextCandidate = parts[i][1];
-						//depth++;
 					} else if (i == 0) {
 						nextCandidate = parts[i][1];
 					} else {
 						break;
 					}
 				}
-				depth++;
 			} else {
 				return nextCandidate;
 			}
@@ -269,6 +277,7 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	}
 	
 	function getFeature(uri) {
+		console.log(uri)
 		//if already exists return that
 		for (var i = 0; i < features.length; i++) {
 			if (features[i].uri == uri) {

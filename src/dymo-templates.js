@@ -1,6 +1,15 @@
 function DymoTemplates() { }
 
 //expects featurePaths to contain a bar and beat tracker file, followed by any other features
+DymoTemplates.createSingleSourceDymoFromFeatures = function(generator, source, uris, conditions, onLoad) {
+	generator.addDymo(undefined, source);
+	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
+		generator.updateGraphs();
+		onLoad();
+	});
+}
+
+//expects featurePaths to contain a bar and beat tracker file, followed by any other features
 DymoTemplates.createAnnotatedBarAndBeatDymo = function(generator, featureUris, onLoad) {
 	var uris = [featureUris[0], featureUris[0]];
 	var conditions = ['1',''];
@@ -110,6 +119,7 @@ function getUris(dir, files, names, conditions) {
 }
 
 DymoTemplates.loadMultipleFeatures = function(generator, uris, conditions, i, onLoad) {
+	Benchmarker.startTask("loadFeatures")
 	var loader = new FeatureLoader();
 	if (i < uris.length && uris[i]) {
 		loader.loadFeature(uris[i], conditions[i], generator, function() {

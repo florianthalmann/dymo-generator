@@ -84,11 +84,11 @@ function FeatureLoader() {
 			}
 			var duration = findObjectInStore(store, events[i].object, timelineOntology+'duration');
 			var timeObject = {
-				time: {value: parseXsdNumber(time)},
-				label: {value: parseXsdString(findObjectInStore(store, events[i].subject, rdfsUri+'label'))}
+				time: parseXsdNumber(time),
+				label: parseXsdString(findObjectInStore(store, events[i].subject, rdfsUri+'label'))
 			};
 			if (duration) {
-				timeObject.duration = {value: parseXsdNumber(duration)};
+				timeObject.duration = parseXsdNumber(duration);
 			}
 			times.push(timeObject);
 		}
@@ -177,8 +177,8 @@ function FeatureLoader() {
 		var outputId = results["annotation_metadata"]["annotator"]["output_id"];
 		if (outputId == "beats" || outputId == "onsets") {
 			results = results.data;
-			if (labelCondition && results[0].label) {
-				results = results.filter(function(x) { return x.label.value == labelCondition; });
+			if (labelCondition && results[0].value) {
+				results = results.filter(function(x) { return x.value == labelCondition; });
 			}
 			generator.addSegmentation(results);
 			if (callback) {
@@ -246,11 +246,11 @@ function FeatureLoader() {
 	function httpGet(uri, onLoad) {
 		var xhr = new XMLHttpRequest();
 		xhr.addEventListener("load", function() {
-			console.log("loaded " + uri);
+			//console.log("loaded " + uri);
 			onLoad(this.responseText);
 		});
 		xhr.addEventListener("error", function() {
-			console.log("loading " + uri + " failed");
+			//console.log("loading " + uri + " failed");
 			onLoad(this.responseText);
 		});
 		xhr.open("GET", uri);
