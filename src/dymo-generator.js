@@ -12,7 +12,7 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	var dymoGraph;
 	var similarityGraph;
 	var features;
-	var summarizingMode = MEAN;
+	var summarizingMode = SUMMARY.MEAN;
 	var currentSourcePath;
 	var dymoCount = 0;
 	
@@ -115,9 +115,9 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	this.addFeature = function(name, data, dimensions) {
 		Benchmarker.startTask("addFeature")
 		initTopDymoIfNecessary();
-		var feature = addFeature(name);
+		var feature = getFeature(name);
 		//iterate through all levels and add averages
-		var dymos = store.findAllParts(currentTopDymo);
+		var dymos = store.findAllObjectsInHierarchy(currentTopDymo);
 		for (var i = 0; i < dymos.length; i++) {
 			var currentTime = store.findFeature(dymos[i], TIME_FEATURE);
 			var currentDuration = store.findFeature(dymos[i], DURATION_FEATURE);
@@ -154,11 +154,11 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 			}
 			var dim = vectors[0].value.length;
 			for (var k = 0; k < dim; k++) {
-				if (summarizingMode == FIRST) {
+				if (summarizingMode == SUMMARY.FIRST) {
 					vector[k] = vectors[0].value[k];
-				} else if (summarizingMode == MEAN) {
+				} else if (summarizingMode == SUMMARY.MEAN) {
 					vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;
-				} else if (summarizingMode == MEDIAN) {
+				} else if (summarizingMode == SUMMARY.MEDIAN) {
 					vectors.sort(function(a, b) { return a.value[k] - b.value[k]; });
 					var middleIndex = Math.floor(vectors.length/2);
 					vector[k] = vectors[middleIndex].value[k];
@@ -177,8 +177,9 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	
 	this.addSegmentation = function(segments) {
 		initTopDymoIfNecessary();
+		var maxLevel = store.getMaxLevel();
 		for (var i = 0; i < segments.length; i++) {
-			var parentUri = getSuitableParent(segments[i].time);
+			var parentUri = getSuitableParent(segments[i].time, maxLevel);
 			var startTime = segments[i].time;
 			var duration;
 			if (segments[i].duration) {
@@ -214,9 +215,10 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		}
 	}
 	
-	function getSuitableParent(time) {
+	function getSuitableParent(time, maxLevel) {
 		var nextCandidate = currentTopDymo;
-		while (true) {
+		var currentLevel = store.getLevel(currentTopDymo);
+		while (currentLevel < maxLevel) {
 			var parts = store.findParts(nextCandidate);
 			if (parts.length > 0) {
 				parts = parts.map(function(p){return [store.findFeature(p, TIME_FEATURE), p]});
@@ -230,6 +232,7 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 						break;
 					}
 				}
+				currentLevel++;
 			} else {
 				return nextCandidate;
 			}
@@ -250,18 +253,18 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		}
 	}
 	
-	this.setDymoFeature = function(dymoUri, feature, value) {
-		store.setFeature(dymoUri, feature, value);
-		updateMinMax(feature, value);
+	this.setDymoFeature = function(dymoUri, featureUri, value) {
+		store.setFeature(dymoUri, featureUri, value);
+		updateMinMax(featureUri, value);
 	}
 	
 	function updateMinMax(featureUri, value) {
 		if (!isNaN(value)) {
-			helpUpdateMinMax(getFeature(featureUri), value);
+			helpUpdateMinMax(getFeature(null, featureUri), value);
 		} else if (value instanceof Array) {
 			//it's an array
 			for (var i = 0; i < value.length; i++) {
-				helpUpdateMinMax(getFeature(featureUri), value[i]);
+				helpUpdateMinMax(getFeature(null, featureUri), value[i]);
 			}
 		}
 	}
@@ -276,15 +279,17 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		}
 	}
 	
-	function getFeature(uri) {
-		console.log(uri)
+	function getFeature(name, uri) {
 		//if already exists return that
 		for (var i = 0; i < features.length; i++) {
+			if (features[i].name == name) {
+				return features[i];
+			}
 			if (features[i].uri == uri) {
 				return features[i];
 			}
 		}
-		return addFeature(null, uri);
+		return addFeature(name, uri);
 	}
 	
 	function addFeature(name, uri, min, max) {

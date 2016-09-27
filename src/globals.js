@@ -1,5 +1,7 @@
-// feature condensation modes
+// feature summarizing modes
 
-var MEAN = "mean";
-var MEDIAN = "median";
-var FIRST = "first";
+var SUMMARY = {
+	MEAN: "mean",
+	MEDIAN: "median",
+	FIRST: "first"
+}
