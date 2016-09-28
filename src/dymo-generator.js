@@ -27,13 +27,17 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		addFeature("random", null, 0, 1);
 	}
 	
+	this.getStore = function() {
+		return store;
+	}
+	
 	this.setDymo = function(dymo, dymoMap) {
 		this.resetDymo();
 		recursiveAddDymo(undefined, dymo);
 	}
 	
-	this.getDymo = function() {
-		return topDymo;
+	this.getCurrentTopDymo = function() {
+		return currentTopDymo;
 	}
 	
 	this.getDymoGraph = function() {
@@ -137,7 +141,10 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 			}
 			Benchmarker.startTask("summarize")
 			var value = getSummarizedValues(currentValues);
-			//console.log(value)
+			/*if (typeof value == "string") {
+				var labelFeature = getFeature(SEGMENT_LABEL);
+				this.setDymoFeature(dymos[i], getFeature(SEGMENT_LABEL), value);
+			}*/
 			this.setDymoFeature(dymos[i], feature.uri, value);
 		}
 	}
@@ -154,7 +161,9 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 			}
 			var dim = vectors[0].value.length;
 			for (var k = 0; k < dim; k++) {
-				if (summarizingMode == SUMMARY.FIRST) {
+				if (typeof vectors[0].value[k] == "string") {
+					vector[k] = vectors[0].value[k];
+				} else if (summarizingMode == SUMMARY.FIRST) {
 					vector[k] = vectors[0].value[k];
 				} else if (summarizingMode == SUMMARY.MEAN) {
 					vector[k] = vectors.reduce(function(sum, i) { return sum + i.value[k]; }, 0) / vectors.length;

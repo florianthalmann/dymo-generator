@@ -175,7 +175,7 @@ function FeatureLoader() {
 	function loadFeatureFromJams(json, labelCondition, generator, callback) {
 		var results = json[Object.keys(json)[1]][0];
 		var outputId = results["annotation_metadata"]["annotator"]["output_id"];
-		if (outputId == "beats" || outputId == "onsets") {
+		if (outputId == "beats" || outputId == "onsets" || outputId == "segmentation") {
 			results = results.data;
 			if (labelCondition && results[0].value) {
 				results = results.filter(function(x) { return x.value == labelCondition; });

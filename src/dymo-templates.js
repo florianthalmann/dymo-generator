@@ -4,6 +4,7 @@ function DymoTemplates() { }
 DymoTemplates.createSingleSourceDymoFromFeatures = function(generator, source, uris, conditions, onLoad) {
 	generator.addDymo(undefined, source);
 	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
+		Similarity.addSimilaritiesTo(generator.getCurrentTopDymo(), generator.getStore());
 		generator.updateGraphs();
 		onLoad();
 	});
