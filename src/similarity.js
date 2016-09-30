@@ -7,7 +7,7 @@ Similarity.addSimilaritiesTo = function(dymoUri, store) {
 			var vectorMap = Similarity.toVectors(currentLevel, store);
 			var similarities = Similarity.getCosineSimilarities(vectorMap);
 			//Similarity.addHighestSimilarities(store, similarities, currentLevel.length/2);
-			Similarity.addSimilaritiesAbove(store, similarities, 0.8);
+			Similarity.addSimilaritiesAbove(store, similarities, 0.4);
 		}
 		currentLevel = Similarity.getAllParts(currentLevel, store);
 	}
@@ -16,6 +16,7 @@ Similarity.addSimilaritiesTo = function(dymoUri, store) {
 Similarity.addSimilaritiesAbove = function(store, similarities, threshold) {
 	for (var uri1 in similarities) {
 		for (var uri2 in similarities[uri1]) {
+			//console.log(similarities[uri1][uri2])
 			if (similarities[uri1][uri2] > threshold) {
 				store.addSimilar(uri1, uri2);
 				store.addSimilar(uri2, uri1);
@@ -34,6 +35,7 @@ Similarity.addHighestSimilarities = function(store, similarities, count) {
 	}
 	//sort in descending order
 	sortedSimilarities = sortedSimilarities.sort(function(a,b){return b[0] - a[0]});
+	console.log(sortedSimilarities.map(function(s){return s[0]}))
 	//add highest ones to dymos
 	for (var i = 0, l = Math.min(sortedSimilarities.length, count); i < l; i++) {
 		var sim = sortedSimilarities[i];
@@ -57,7 +59,7 @@ Similarity.toVectors = function(dymoUris, store, reduce) {
 	var vectors = [];
 	for (var i = 0, l = dymoUris.length; i < l; i++) {
 		var currentVector = [];
-		var currentFeatures = store.findAllFeatureValues(dymoUris[i]);
+		var currentFeatures = store.findAllFeatureValues(dymoUris[i]).filter(function(v){return typeof v != "string";});;
 		for (var j = 0, m = currentFeatures.length; j < m; j++) {
 			var feature = currentFeatures[j];
 			//reduce all multidimensional vectors to one value

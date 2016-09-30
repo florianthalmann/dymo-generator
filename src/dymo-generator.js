@@ -8,6 +8,7 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	
 	var topDymo; //TODO REMOVE
 	var currentTopDymo; //the top dymo for the current audio file
+	var currentRenderingUri;
 	var audioFileChanged;
 	var dymoGraph;
 	var similarityGraph;
@@ -15,6 +16,7 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	var summarizingMode = SUMMARY.MEAN;
 	var currentSourcePath;
 	var dymoCount = 0;
+	var renderingCount = 0;
 	
 	this.resetDymo = function() {
 		topDymo = undefined;
@@ -29,6 +31,19 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	
 	this.getStore = function() {
 		return store;
+	}
+	
+	this.addRendering = function() {
+		currentRenderingUri = getUniqueRenderingUri();
+		store.addRendering(currentRenderingUri, currentTopDymo);
+	}
+	
+	this.addMapping = function(domainDims, mappingFunction, subsetOrFunction, rangeUri) {
+		store.addMapping(domainDims, mappingFunction, subsetOrFunction, rangeUri);
+	}
+	
+	this.addNavigator = function(navigatorType, subsetFunctionArgs, subsetFunctionBody) {
+		store.addNavigator(currentRenderingUri, navigatorType, subsetFunctionArgs, subsetFunctionBody);
 	}
 	
 	this.setDymo = function(dymo, dymoMap) {
@@ -102,6 +117,12 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		return dymoUri;
 	}
 	
+	function getUniqueRenderingUri() {
+		var renderingUri = CONTEXT_URI + "rendering" + renderingCount;
+		renderingUri++;
+		return renderingUri;
+	}
+	
 	this.updateGraphs = function() {
 		Benchmarker.startTask("toPartGraph")
 		store.toJsonGraph(DYMO, HAS_PART, function(pg) {
@@ -134,10 +155,15 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 			}
 			//event-based feature:
 			if (currentValues.length < 1) {
-				currentValues = data.filter(
-					function(x){return x.time.value < currentTime}
+				var earlierValues = data.filter(
+					function(x){return x.time.value <= currentTime}
 				);
-				currentValues = currentValues[currentValues.length-1];
+				if (earlierValues.length > 0) {
+					currentValues = [earlierValues[currentValues.length-1]];
+				} else {
+					//set to first value
+					currentValues = [data[0]];
+				}
 			}
 			Benchmarker.startTask("summarize")
 			var value = getSummarizedValues(currentValues);
@@ -204,13 +230,13 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 			}
 			//don't want anything with duration 0 (what other feature values would it have?)
 			if (duration > 0) {
-				var newDymo = internalAddDymo(parentUri);
-				this.setDymoFeature(newDymo, TIME_FEATURE, startTime);
-				this.setDymoFeature(newDymo, DURATION_FEATURE, duration);
-				if (segments[i].label && !isNaN(segments[i].label)) {
-					this.setDymoFeature(newDymo, SEGMENT_LABEL_FEATURE, segments[i].label);
-				}
-				updateParentDuration(parentUri, newDymo);
+				var newDymoUri = internalAddDymo(parentUri);
+				this.setDymoFeature(newDymoUri, TIME_FEATURE, startTime);
+				this.setDymoFeature(newDymoUri, DURATION_FEATURE, duration);
+				/*if (segments[i].label && !isNaN(segments[i].label)) {
+					this.setDymoFeature(newDymoUri, SEGMENT_LABEL_FEATURE, segments[i].label);
+				}*/
+				updateParentDuration(parentUri, newDymoUri);
 			}
 		}
 	}
@@ -254,6 +280,7 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		var newDymoTime = store.findFeature(newDymoUri, TIME_FEATURE);
 		if (isNaN(parentTime) || Array.isArray(parentTime) || newDymoTime < parentTime) {
 			self.setDymoFeature(parentUri, TIME_FEATURE, newDymoTime);
+			parentTime = newDymoTime;
 		}
 		var parentDuration = store.findFeature(parentUri, DURATION_FEATURE);
 		var newDymoDuration = store.findFeature(newDymoUri, DURATION_FEATURE);
