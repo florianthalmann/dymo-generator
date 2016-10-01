@@ -1,8 +1,8 @@
 /**
- * Offers basic functions for generating dymos, inserts them into the given store. The updateGraph function needs to be called manually.
+ * Offers basic functions for generating dymos, inserts them into the given store.
  * @constructor
  */
-function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
+function DymoGenerator(store, onFeatureAdded) {
 	
 	var self = this;
 	
@@ -10,8 +10,6 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	var currentTopDymo; //the top dymo for the current audio file
 	var currentRenderingUri;
 	var audioFileChanged;
-	var dymoGraph;
-	var similarityGraph;
 	var features;
 	var summarizingMode = SUMMARY.MEAN;
 	var currentSourcePath;
@@ -22,8 +20,6 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		topDymo = undefined;
 		currentTopDymo = undefined; //the top dymo for the current audio file
 		audioFileChanged = false;
-		dymoGraph = {"nodes":[], "links":[]};
-		similarityGraph = {"nodes":[], "links":[]};
 		features = [];
 		addFeature("level", LEVEL_FEATURE)
 		addFeature("random", null, 0, 1);
@@ -53,14 +49,6 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 	
 	this.getCurrentTopDymo = function() {
 		return currentTopDymo;
-	}
-	
-	this.getDymoGraph = function() {
-		return dymoGraph;
-	}
-	
-	this.getSimilarityGraph = function() {
-		return similarityGraph;
 	}
 	
 	this.getFeatures = function() {
@@ -121,20 +109,6 @@ function DymoGenerator(store, onFeatureAdded, onGraphsChanged) {
 		var renderingUri = CONTEXT_URI + "rendering" + renderingCount;
 		renderingUri++;
 		return renderingUri;
-	}
-	
-	this.updateGraphs = function() {
-		Benchmarker.startTask("toPartGraph")
-		store.toJsonGraph(DYMO, HAS_PART, function(pg) {
-			dymoGraph = pg;
-			Benchmarker.startTask("toSimilarGraph")
-			store.toJsonGraph(DYMO, HAS_SIMILAR, function(sg) {
-				similarityGraph = sg;
-				if (onGraphsChanged) {
-					onGraphsChanged();
-				}
-			});
-		});
 	}
 	
 	this.addFeature = function(name, data, dimensions) {

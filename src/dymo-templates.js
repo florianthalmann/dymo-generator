@@ -1,23 +1,34 @@
 function DymoTemplates() { }
 
-//expects featurePaths to contain a bar and beat tracker file, followed by any other features
 DymoTemplates.createSingleSourceDymoFromFeatures = function(generator, source, uris, conditions, onLoad) {
 	generator.addDymo(undefined, source);
 	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
-		generator.updateGraphs();
+		//generator.updateGraphs();
 		onLoad();
 	});
 }
 
-//expects featurePaths to contain a bar and beat tracker file, followed by any other features
 DymoTemplates.createSimilarityDymoFromFeatures = function(generator, source, uris, conditions, onLoad) {
 	generator.addDymo(undefined, source);
 	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
 		Similarity.addSimilaritiesTo(generator.getCurrentTopDymo(), generator.getStore());
 		generator.addRendering();
+		generator.addNavigator(SIMILARITY_NAVIGATOR, "d", "return d.getLevel() == 0");
+		generator.addNavigator(REPEATED_NAVIGATOR, "d", "return d.getLevel() == 1");
+		//generator.updateGraphs();
+		onLoad();
+	});
+}
+
+DymoTemplates.createSimilaritySuccessorDymoFromFeatures = function(generator, source, uris, conditions, onLoad) {
+	generator.addDymo(undefined, source);
+	DymoTemplates.loadMultipleFeatures(generator, uris, conditions, 0, function() {
+		Similarity.addSimilaritiesTo(generator.getCurrentTopDymo(), generator.getStore());
+		Similarity.addSuccessionGraphTo(generator.getCurrentTopDymo(), generator.getStore());
+		generator.addRendering();
 		generator.addNavigator(GRAPH_NAVIGATOR, "d", "return d.getLevel() == 0");
 		generator.addNavigator(REPEATED_NAVIGATOR, "d", "return d.getLevel() == 1");
-		generator.updateGraphs();
+		//generator.updateGraphs();
 		onLoad();
 	});
 }
