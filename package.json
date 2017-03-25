@@ -1,0 +1,34 @@
+{
+  "name": "dymo-generator",
+  "version": "0.0.1",
+  "description": "A package that generates structured dymos from feature files",
+  "main": "lib/index.js",
+  "typings": "lib/index",
+  "files": [
+    "lib/",
+    "spec"
+  ],
+  "scripts": {
+    "test": "jasmine"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/florianthalmann/dymo-generator.git"
+  },
+  "keywords": [
+    "dymo",
+    "generator"
+  ],
+  "author": "florianthalmann",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/florianthalmann/dymo-generator/issues"
+  },
+  "homepage": "https://github.com/florianthalmann/dymo-generator#readme",
+  "dependencies": {
+    "dymo-core": "^0.9.50",
+    "lodash": "^4.17.4",
+    "rxjs": "^5.2.0",
+    "siafun": "0.0.3"
+  }
+}

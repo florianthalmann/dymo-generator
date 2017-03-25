@@ -1,6 +1,6 @@
 // feature summarizing modes
 
-var SUMMARY = {
+export const SUMMARY = {
 	MEAN: "mean",
 	MEDIAN: "median",
 	FIRST: "first"
