@@ -1,9 +1,7 @@
-import { BehaviorSubject } from 'rxjs/BehaviorSubject';
-import { Observable } from 'rxjs/Observable';
 import * as _ from 'lodash';
 import { uris, URI_TO_TERM, DymoManager } from 'dymo-core';
 import { SUMMARY } from './globals';
-import { Feature } from './types';
+//import { Feature } from './types';
 
 /**
  * Offers basic functions for generating dymos, inserts them into the given store.
@@ -14,15 +12,14 @@ export class DymoGenerator {
 	private ready: Promise<any>;
 	private currentTopDymo; //the top dymo for the current audio file
 	private currentRenderingUri;
-	private features: BehaviorSubject<Feature[]>;
 	private summarizingMode = SUMMARY.MEAN;
 	private currentSourcePath;
 	private dymoCount = 0;
 	private renderingCount = 0;
 
 	constructor() {
-		this.features = new BehaviorSubject([]);
-		this.manager = new DymoManager(new AudioContext(), null, false, null);
+		let context = typeof AudioContext !== 'undefined' ? new AudioContext() : null;
+		this.manager = new DymoManager(context, null, false, null);
 		this.ready = this.init();
 	}
 
@@ -42,16 +39,12 @@ export class DymoGenerator {
 
 	resetDymo() {
 		this.currentTopDymo = undefined; //the top dymo for the current audio file
-		this.internalAddFeature("level", uris.LEVEL_FEATURE, 0, 0);
-		this.internalAddFeature("random", null, 0, 1);
+		//this.internalAddFeature("level", uris.LEVEL_FEATURE, 0, 0);
+		//this.internalAddFeature("random", null, 0, 1);
 	}
 
 	getManager(): DymoManager {
 		return this.manager;
-	}
-
-	getFeatures(): Observable<Feature[]> {
-		return this.features.asObservable();
 	}
 
 	addRendering() {
@@ -108,7 +101,7 @@ export class DymoGenerator {
 		}
 		//Benchmarker.startTask("addFeature")
 		this.initTopDymoIfNecessary();
-		var feature = this.getFeature(name);
+		//var feature = this.getFeature(name);
 		//iterate through all levels and add averages
 		var dymos = this.manager.getStore().findAllObjectsInHierarchy(dymoUri);
 		for (var i = 0; i < dymos.length; i++) {
@@ -137,7 +130,7 @@ export class DymoGenerator {
 				var labelFeature = getFeature(SEGMENT_LABEL);
 				this.setDymoFeature(dymos[i], getFeature(SEGMENT_LABEL), value);
 			}*/
-			this.setDymoFeature(dymos[i], feature.uri, value);
+			this.setDymoFeature(dymos[i], uris.CONTEXT_URI+name, value);
 		}
 	}
 
@@ -255,10 +248,10 @@ export class DymoGenerator {
 
 	setDymoFeature(dymoUri, featureUri, value) {
 		this.manager.getStore().setFeature(dymoUri, featureUri, value);
-		this.updateMinMax(featureUri, value);
+		//this.updateMinMax(featureUri, value);
 	}
 
-	private updateMinMax(featureUri, value) {
+	/*private updateMinMax(featureUri, value) {
 		if (!isNaN(value)) {
 			this.helpUpdateMinMax(this.getFeature(null, featureUri), value);
 		} else if (value instanceof Array) {
@@ -299,6 +292,6 @@ export class DymoGenerator {
 		}
 		this.features.next(features);
 		return feature;
-	}
+	}*/
 
 }

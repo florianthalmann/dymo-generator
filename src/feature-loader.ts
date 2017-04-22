@@ -1,4 +1,4 @@
-import { Parser, Store, Util } from 'n3'
+import { Parser, Store, Util } from 'n3';
 
 export class FeatureLoader {
 
@@ -245,17 +245,9 @@ export class FeatureLoader {
 	}
 
 	private httpGet(uri, onLoad) {
-		var xhr = new XMLHttpRequest();
-		xhr.addEventListener("load", function() {
-			//console.log("loaded " + uri);
-			onLoad(this.responseText);
-		});
-		xhr.addEventListener("error", function() {
-			//console.log("loading " + uri + " failed");
-			onLoad(this.responseText);
-		});
-		xhr.open("GET", uri);
-		xhr.send();
-	}
+    fetch(uri, { mode: 'cors' })
+      .then(response => response.text())
+      .then(text => onLoad(text));
+  }
 
 }
