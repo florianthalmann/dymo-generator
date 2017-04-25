@@ -27,12 +27,15 @@
   "homepage": "https://github.com/florianthalmann/dymo-generator#readme",
   "dependencies": {
     "dymo-core": "^0.9.50",
+    "express": "^4.15.2",
+    "isomorphic-fetch": "^2.2.1",
     "lodash": "^4.17.4",
     "rxjs": "^5.2.0",
     "siafun": "0.0.3"
   },
   "devDependencies": {
     "@types/isomorphic-fetch": "0.0.33",
+    "@types/node": "^7.0.13",
     "isomorphic-fetch": "^2.2.1"
   }
 }

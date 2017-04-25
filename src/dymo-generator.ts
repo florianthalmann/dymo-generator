@@ -72,7 +72,7 @@ export class DymoGenerator {
 		this.currentSourcePath = path;
 	}
 
-	addDymo(parentUri, sourcePath?: string, dymoType?: string, dymoUri?: string) {
+	addDymo(parentUri?: string, sourcePath?: string, dymoType?: string, dymoUri?: string) {
 		if (!dymoUri) {
 			dymoUri = this.getUniqueDymoUri();
 		}
